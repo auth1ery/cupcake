@@ -1900,7 +1900,7 @@ document.getElementById("import-btn").addEventListener("click", () => {
   document.getElementById("import-status").className = "import-status";
   document.getElementById("import-modal-title").textContent = "import js";
   document.getElementById("import-modal-body").innerHTML = `
-    <div class="import-hint">paste javascript below — it'll be parsed into nodes</div>
+    <div class="import-hint">paste javascript below, it'll be parsed into nodes</div>
     <textarea class="import-textarea" id="import-textarea" placeholder="// paste your js here&#10;let x = 5 + 3;&#10;console.log(x);"></textarea>
     <div class="import-status" id="import-status"></div>
   `;
@@ -1932,16 +1932,16 @@ document.getElementById("import-go-btn").addEventListener("click", () => {
   }, 350);
 
   const delay = 1200 + Math.random() * 1800;
-  setTimeout(() => {
+  setTimeout(async () => {
     clearInterval(dotInt);
     try {
-      const result = parseJSIntoNodes(raw);
+      const result = await parseJSIntoNodes(raw);
       document.getElementById("import-modal").classList.remove("open");
       toast(`imported ${result} node${result !== 1 ? "s" : ""}`);
     } catch (err) {
       title.textContent = "import js";
       body.innerHTML = `
-        <div class="import-hint">paste javascript below — it'll be parsed into nodes</div>
+        <div class="import-hint">paste javascript below, it'll be parsed into nodes</div>
         <textarea class="import-textarea" id="import-textarea" placeholder="// paste your js here&#10;let x = 5 + 3;&#10;console.log(x);"></textarea>
         <div class="import-status err" id="import-status">parse error: ${err.message}</div>
       `;
@@ -1950,37 +1950,33 @@ document.getElementById("import-go-btn").addEventListener("click", () => {
   }, delay);
 });
 
-function parseJSIntoNodes(code) {
-  const lines = code
-    .split("\n")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  let count = 0;
-  let col = 0;
+async function parseJSIntoNodes(code) {
+  if (!window.acorn) {
+    await new Promise((res, rej) => {
+      const s = document.createElement("script");
+      s.src =
+        "https://cdnjs.cloudflare.com/ajax/libs/acorn/8.11.3/acorn.min.js";
+      s.onload = res;
+      s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
 
-  const place = (type, x, y, fields) => {
+  const ast = window.acorn.parse(code, { ecmaVersion: 2022 });
+  let count = 0;
+  const existingCount = Object.keys(nodes).length;
+  const baseX = (existingCount % 4) * 240 + 80;
+  const baseY = 80 + Math.floor(existingCount / 4) * 200;
+
+  function placeNode(type, x, y, fields) {
     const id = makeNode(type, x, y);
-    if (fields && id) {
+    if (!id || !nodes[id]) return id;
+    if (fields) {
       Object.entries(fields).forEach(([k, v]) => {
-        if (nodes[id]) nodes[id].f[k] = v;
+        nodes[id].f[k] = String(v);
       });
       const el = document.getElementById("node-" + id);
       if (el) {
-        el.querySelectorAll(".nfinput, .nfsel").forEach((inp) => {
-          const fld = TYPES[nodes[id].type]?.fields.find(
-            (f) => nodes[id].f[f.id] === inp.value || true,
-          );
-          if (inp.tagName === "INPUT" || inp.tagName === "TEXTAREA") {
-            const key = Object.keys(nodes[id].f).find(
-              (k) => nodes[id].f[k] !== undefined,
-            );
-          }
-        });
-        el.querySelectorAll(".nfinput").forEach((inp) => {
-          const fieldDef = TYPES[nodes[id].type]?.fields.find((fd) => {
-            return nodes[id].f[fd.id] !== undefined;
-          });
-        });
         TYPES[nodes[id].type]?.fields.forEach((fd, i) => {
           const inp = el.querySelectorAll(".nfinput, .nfsel")[i];
           if (inp) inp.value = nodes[id].f[fd.id] ?? "";
@@ -1989,96 +1985,497 @@ function parseJSIntoNodes(code) {
     }
     count++;
     return id;
-  };
+  }
 
-  const baseX = (Object.keys(nodes).length % 6) * 220 + 60;
-  const baseY = 80 + Math.floor(Object.keys(nodes).length / 6) * 180;
+  function exprToNode(node, x, y) {
+    if (!node) return placeNode("raw_js", x, y, { code: "/* unresolved */" });
 
-  lines.forEach((line, i) => {
-    const x = baseX + (col % 4) * 220;
-    const y = baseY + i * 160;
+    if (node.type === "Literal") {
+      if (typeof node.value === "number")
+        return placeNode("number", x, y, { v: String(node.value) });
+      if (typeof node.value === "string")
+        return placeNode("string", x, y, { v: node.value });
+      if (typeof node.value === "boolean")
+        return placeNode("boolean", x, y, { v: String(node.value) });
+      if (node.value === null) return placeNode("null_val", x, y, {});
+    }
 
-    const varMatch = line.match(/^(let|const|var)\s+(\w+)\s*=\s*(.+?);?$/);
-    if (varMatch) {
-      const [, kind, name, val] = varMatch;
-      const numId = place("number", x + 20, y - 60, { v: val.trim() });
-      const varId = place("variable", x, y, { kind, name });
-      if (numId && varId) {
-        const outPort = Object.values(nodes).find((n) => n.id === numId);
-        if (outPort) addConn(numId, "out", varId, "val");
+    if (node.type === "Identifier") {
+      if (node.name === "undefined")
+        return placeNode("undefined_val", x, y, {});
+      return placeNode("raw_js", x, y, { code: node.name });
+    }
+
+    if (node.type === "BinaryExpression") {
+      const opMap = {
+        "+": "add",
+        "-": "subtract",
+        "*": "multiply",
+        "/": "divide",
+        "%": "modulo",
+        "**": "power",
+      };
+      const cmpOps = ["===", "!==", "<", ">", "<=", ">="];
+      if (opMap[node.operator]) {
+        const nid = placeNode(opMap[node.operator], x, y, {});
+        const leftId = exprToNode(node.left, x - 220, y - 60);
+        const rightId = exprToNode(node.right, x - 220, y + 60);
+        if (leftId) addConn(leftId, "out", nid, "a");
+        if (rightId) addConn(rightId, "out", nid, "b");
+        return nid;
       }
-      return;
+      if (cmpOps.includes(node.operator)) {
+        const nid = placeNode("compare", x, y, { op: node.operator });
+        const leftId = exprToNode(node.left, x - 220, y - 60);
+        const rightId = exprToNode(node.right, x - 220, y + 60);
+        if (leftId) addConn(leftId, "out", nid, "a");
+        if (rightId) addConn(rightId, "out", nid, "b");
+        return nid;
+      }
     }
 
-    const logMatch = line.match(/^console\.log\((.+?)\);?$/);
-    if (logMatch) {
-      const inner = logMatch[1].trim();
-      const isNum = /^-?\d+(\.\d+)?$/.test(inner);
-      const isStr = /^["'`]/.test(inner);
-      let valId;
-      if (isNum) valId = place("number", x + 20, y - 60, { v: inner });
-      else if (isStr)
-        valId = place("string", x + 20, y - 60, {
-          v: inner.replace(/^["'`]|["'`]$/g, ""),
+    if (node.type === "LogicalExpression") {
+      const opMap = { "&&": "and", "||": "or", "??": "nullish" };
+      const t = opMap[node.operator];
+      if (t) {
+        const nid = placeNode(t, x, y, {});
+        const leftId = exprToNode(node.left, x - 220, y - 60);
+        const rightId = exprToNode(node.right, x - 220, y + 60);
+        if (leftId) addConn(leftId, "out", nid, "a");
+        if (rightId) addConn(rightId, "out", nid, "b");
+        return nid;
+      }
+    }
+
+    if (node.type === "UnaryExpression" && node.operator === "!") {
+      const nid = placeNode("not", x, y, {});
+      const argId = exprToNode(node.argument, x - 200, y);
+      if (argId) addConn(argId, "out", nid, "a");
+      return nid;
+    }
+
+    if (node.type === "ConditionalExpression") {
+      const nid = placeNode("ternary", x, y, {});
+      const condId = exprToNode(node.test, x - 220, y - 80);
+      const thenId = exprToNode(node.consequent, x - 220, y);
+      const elseId = exprToNode(node.alternate, x - 220, y + 80);
+      if (condId) addConn(condId, "out", nid, "cond");
+      if (thenId) addConn(thenId, "out", nid, "then");
+      if (elseId) addConn(elseId, "out", nid, "else");
+      return nid;
+    }
+
+    if (node.type === "TemplateLiteral") {
+      if (node.expressions.length === 0) {
+        return placeNode("string", x, y, { v: node.quasis[0].value.cooked });
+      }
+      let tpl = "";
+      node.quasis.forEach((q, i) => {
+        tpl += q.value.cooked + (i < node.expressions.length ? `$${i}` : "");
+      });
+      const nid = placeNode("template_str", x, y, { tpl });
+      node.expressions.slice(0, 3).forEach((expr, i) => {
+        const eid = exprToNode(expr, x - 220, y + i * 70 - 70);
+        if (eid) addConn(eid, "out", nid, `v${i}`);
+      });
+      return nid;
+    }
+
+    if (node.type === "CallExpression") {
+      const callee = node.callee;
+
+      if (callee.type === "MemberExpression") {
+        const obj = callee.object;
+        const prop = callee.property.name;
+
+        if (
+          obj.type === "Identifier" &&
+          obj.name === "console" &&
+          prop === "log"
+        ) {
+          const nid = placeNode("log", x, y, {});
+          if (node.arguments[0]) {
+            const argId = exprToNode(node.arguments[0], x - 220, y);
+            if (argId) addConn(argId, "out", nid, "val");
+          }
+          return nid;
+        }
+
+        if (
+          obj.type === "Identifier" &&
+          obj.name === "console" &&
+          prop === "error"
+        ) {
+          const nid = placeNode("console_error", x, y, {});
+          if (node.arguments[0]) {
+            const argId = exprToNode(node.arguments[0], x - 220, y);
+            if (argId) addConn(argId, "out", nid, "val");
+          }
+          return nid;
+        }
+
+        if (obj.type === "Identifier" && obj.name === "Math") {
+          const mathMap = {
+            abs: "abs",
+            floor: "floor",
+            ceil: "ceil",
+            round: "round",
+            random: "random",
+            min: "min",
+            max: "max",
+            pow: "power",
+          };
+          if (mathMap[prop]) {
+            const nid = placeNode(mathMap[prop], x, y, {});
+            const ports = ["a", "b"];
+            node.arguments.slice(0, 2).forEach((arg, i) => {
+              const aid = exprToNode(arg, x - 220, y + i * 70 - 35);
+              if (aid) addConn(aid, "out", nid, ports[i]);
+            });
+            return nid;
+          }
+        }
+
+        if (obj.type === "Identifier" && obj.name === "JSON") {
+          if (prop === "parse") {
+            const nid = placeNode("json_parse", x, y, {});
+            if (node.arguments[0]) {
+              const aid = exprToNode(node.arguments[0], x - 220, y);
+              if (aid) addConn(aid, "out", nid, "str");
+            }
+            return nid;
+          }
+          if (prop === "stringify") {
+            const nid = placeNode("json_stringify", x, y, {});
+            if (node.arguments[0]) {
+              const aid = exprToNode(node.arguments[0], x - 220, y);
+              if (aid) addConn(aid, "out", nid, "val");
+            }
+            return nid;
+          }
+        }
+
+        if (obj.type === "Identifier" && obj.name === "Object") {
+          if (prop === "keys") {
+            const nid = placeNode("obj_keys", x, y, {});
+            if (node.arguments[0]) {
+              const aid = exprToNode(node.arguments[0], x - 220, y);
+              if (aid) addConn(aid, "out", nid, "obj");
+            }
+            return nid;
+          }
+          if (prop === "values") {
+            const nid = placeNode("obj_values", x, y, {});
+            if (node.arguments[0]) {
+              const aid = exprToNode(node.arguments[0], x - 220, y);
+              if (aid) addConn(aid, "out", nid, "obj");
+            }
+            return nid;
+          }
+        }
+
+        const strMethods = {
+          toUpperCase: "str_upper",
+          toLowerCase: "str_lower",
+          trim: "str_trim",
+          length: "str_length",
+        };
+        const arrMethods = { pop: "arr_pop", length: "arr_length" };
+
+        const methodMap = {
+          toUpperCase: "str_upper",
+          toLowerCase: "str_lower",
+          trim: "str_trim",
+          split: "str_split",
+          includes: "str_includes",
+          replace: "str_replace",
+          slice: "str_slice",
+          push: "arr_push",
+          pop: "arr_pop",
+          map: "arr_map",
+          filter: "arr_filter",
+          reduce: "arr_reduce",
+          find: "arr_find",
+          join: "arr_join",
+          then: "then",
+          catch: "catch_err",
+        };
+
+        if (methodMap[prop]) {
+          const nid = placeNode(methodMap[prop], x, y, {});
+          const objId = exprToNode(obj, x - 220, y - 40);
+          const inPort = [
+            "str_upper",
+            "str_lower",
+            "str_trim",
+            "str_length",
+          ].includes(methodMap[prop])
+            ? "str"
+            : [
+                  "arr_pop",
+                  "arr_length",
+                  "arr_map",
+                  "arr_filter",
+                  "arr_reduce",
+                  "arr_find",
+                  "arr_join",
+                ].includes(methodMap[prop])
+              ? "arr"
+              : ["then", "catch_err"].includes(methodMap[prop])
+                ? "promise"
+                : "obj";
+          if (objId) addConn(objId, "out", nid, inPort);
+          const argPorts = {
+            str_split: ["sep"],
+            str_includes: ["sub"],
+            str_replace: ["from", "to"],
+            str_slice: ["start", "end"],
+            arr_push: ["val"],
+            arr_map: ["fn"],
+            arr_filter: ["fn"],
+            arr_reduce: ["fn"],
+            arr_find: ["fn"],
+            arr_join: ["sep"],
+          };
+          if (argPorts[methodMap[prop]]) {
+            node.arguments
+              .slice(0, argPorts[methodMap[prop]].length)
+              .forEach((arg, i) => {
+                if (arg.type === "Literal") {
+                  nodes[nid] &&
+                    (nodes[nid].f[argPorts[methodMap[prop]][i]] = String(
+                      arg.value,
+                    ));
+                  const el = document.getElementById("node-" + nid);
+                  if (el) {
+                    const inp = el.querySelectorAll(".nfinput")[0];
+                    if (inp) inp.value = String(arg.value);
+                  }
+                } else {
+                  const aid = exprToNode(arg, x - 220, y + (i + 1) * 60);
+                  if (aid)
+                    addConn(aid, "out", nid, argPorts[methodMap[prop]][i]);
+                }
+              });
+          }
+          return nid;
+        }
+
+        const raw = code.slice(node.start, node.end);
+        return placeNode("raw_js", x, y, { code: raw });
+      }
+
+      if (callee.type === "Identifier") {
+        const name = callee.name;
+        if (name === "parseInt") {
+          const nid = placeNode("int_parse", x, y, {});
+          if (node.arguments[0]) {
+            const aid = exprToNode(node.arguments[0], x - 220, y);
+            if (aid) addConn(aid, "out", nid, "val");
+          }
+          return nid;
+        }
+        if (name === "parseFloat") {
+          const nid = placeNode("num_parse", x, y, {});
+          if (node.arguments[0]) {
+            const aid = exprToNode(node.arguments[0], x - 220, y);
+            if (aid) addConn(aid, "out", nid, "val");
+          }
+          return nid;
+        }
+        if (name === "String") {
+          const nid = placeNode("to_string", x, y, {});
+          if (node.arguments[0]) {
+            const aid = exprToNode(node.arguments[0], x - 220, y);
+            if (aid) addConn(aid, "out", nid, "val");
+          }
+          return nid;
+        }
+        if (name === "alert") {
+          const nid = placeNode("alert_node", x, y, {});
+          if (node.arguments[0]) {
+            const aid = exprToNode(node.arguments[0], x - 220, y);
+            if (aid) addConn(aid, "out", nid, "val");
+          }
+          return nid;
+        }
+
+        const nid = placeNode("call", x, y, { fn: name });
+        node.arguments.slice(0, 3).forEach((arg, i) => {
+          const aid = exprToNode(arg, x - 220, y + i * 70 - 70);
+          if (aid) addConn(aid, "out", nid, `a${i}`);
         });
-      else valId = place("raw_js", x + 20, y - 60, { code: inner });
-      const logId = place("log", x, y, {});
-      if (valId && logId) addConn(valId, "out", logId, "val");
-      return;
+        return nid;
+      }
     }
 
-    const assignMatch = line.match(/^(\w+)\s*=\s*(.+?);?$/);
-    if (assignMatch) {
-      const [, name, val] = assignMatch;
-      const isNum = /^-?\d+(\.\d+)?$/.test(val.trim());
-      let valId;
-      if (isNum) valId = place("number", x + 20, y - 60, { v: val.trim() });
-      else valId = place("raw_js", x + 20, y - 60, { code: val.trim() });
-      const asId = place("assign", x, y, { name });
-      if (valId && asId) addConn(valId, "out", asId, "val");
-      return;
+    if (node.type === "ArrayExpression") {
+      const items = node.elements
+        .map((el) => {
+          if (!el) return "";
+          if (el.type === "Literal") return String(el.value);
+          return code.slice(el.start, el.end);
+        })
+        .join(", ");
+      return placeNode("arr_literal", x, y, { items });
     }
 
-    const retMatch = line.match(/^return\s+(.+?);?$/);
-    if (retMatch) {
-      const inner = retMatch[1].trim();
-      const isNum = /^-?\d+(\.\d+)?$/.test(inner);
-      let valId;
-      if (isNum) valId = place("number", x + 20, y - 60, { v: inner });
-      else valId = place("raw_js", x + 20, y - 60, { code: inner });
-      const retId = place("ret", x, y, {});
-      if (valId && retId) addConn(valId, "out", retId, "val");
-      return;
+    if (node.type === "ObjectExpression") {
+      const props = node.properties
+        .map((p) => {
+          const key = p.key.name || p.key.value;
+          const val =
+            p.value.type === "Literal"
+              ? JSON.stringify(p.value.value)
+              : code.slice(p.value.start, p.value.end);
+          return `${key}: ${val}`;
+        })
+        .join(", ");
+      return placeNode("obj_literal", x, y, { props });
     }
 
-    const commentMatch = line.match(/^\/\/\s?(.*)$/);
-    if (commentMatch) {
-      place("comment", x, y, { text: commentMatch[1] });
-      return;
+    if (node.type === "MemberExpression" && !node.computed) {
+      const nid = placeNode("obj_get", x, y, { key: node.property.name });
+      const objId = exprToNode(node.object, x - 200, y);
+      if (objId) addConn(objId, "out", nid, "obj");
+      return nid;
     }
 
-    if (line.startsWith("for ")) {
-      const m = line.match(/for\s*\(([^;]+);\s*([^;]+);\s*([^)]+)\)/);
-      place("for_loop", x, y, {
-        init: m ? m[1].trim() : "let i = 0",
-        cond: m ? m[2].trim() : "i < 10",
-        update: m ? m[3].trim() : "i++",
-        body: "",
+    if (node.type === "MemberExpression" && node.computed) {
+      const nid = placeNode("arr_index", x, y, {});
+      const arrId = exprToNode(node.object, x - 220, y - 40);
+      const idxId = exprToNode(node.property, x - 220, y + 40);
+      if (arrId) addConn(arrId, "out", nid, "arr");
+      if (idxId) addConn(idxId, "out", nid, "idx");
+      return nid;
+    }
+
+    if (node.type === "SpreadElement") {
+      return exprToNode(node.argument, x, y);
+    }
+
+    if (node.type === "AwaitExpression") {
+      const nid = placeNode("await_node", x, y, {});
+      const pid = exprToNode(node.argument, x - 200, y);
+      if (pid) addConn(pid, "out", nid, "promise");
+      return nid;
+    }
+
+    return placeNode("raw_js", x, y, {
+      code: code.slice(node.start, node.end),
+    });
+  }
+
+  function stmtToNodes(stmt, x, y) {
+    if (stmt.type === "VariableDeclaration") {
+      stmt.declarations.forEach((decl, i) => {
+        const varId = placeNode("variable", x, y + i * 160, {
+          kind: stmt.kind,
+          name: decl.id.name,
+        });
+        if (decl.init) {
+          const valId = exprToNode(decl.init, x - 240, y + i * 160 - 20);
+          if (valId) addConn(valId, "out", varId, "val");
+        }
       });
       return;
     }
 
-    if (line.startsWith("while ")) {
-      place("while_loop", x, y, { body: "" });
+    if (stmt.type === "ExpressionStatement") {
+      exprToNode(stmt.expression, x, y);
       return;
     }
 
-    if (line.startsWith("if ")) {
-      place("if_stmt", x, y, { body: line });
+    if (stmt.type === "ReturnStatement") {
+      const nid = placeNode("ret", x, y, {});
+      if (stmt.argument) {
+        const valId = exprToNode(stmt.argument, x - 220, y);
+        if (valId) addConn(valId, "out", nid, "val");
+      }
       return;
     }
 
-    place("raw_js", x, y, { code: line });
+    if (stmt.type === "IfStatement") {
+      const nid = placeNode("if_stmt", x, y, {
+        body: stmt.consequent
+          ? code
+              .slice(stmt.consequent.start, stmt.consequent.end)
+              .replace(/^\{|\}$/g, "")
+              .trim()
+          : "",
+      });
+      const condId = exprToNode(stmt.test, x - 220, y - 40);
+      if (condId) addConn(condId, "out", nid, "cond");
+      return;
+    }
+
+    if (stmt.type === "ForStatement") {
+      placeNode("for_loop", x, y, {
+        init: stmt.init ? code.slice(stmt.init.start, stmt.init.end) : "",
+        cond: stmt.test ? code.slice(stmt.test.start, stmt.test.end) : "",
+        update: stmt.update
+          ? code.slice(stmt.update.start, stmt.update.end)
+          : "",
+        body: stmt.body
+          ? code
+              .slice(stmt.body.start, stmt.body.end)
+              .replace(/^\{|\}$/g, "")
+              .trim()
+          : "",
+      });
+      return;
+    }
+
+    if (stmt.type === "WhileStatement") {
+      const nid = placeNode("while_loop", x, y, {
+        body: code
+          .slice(stmt.body.start, stmt.body.end)
+          .replace(/^\{|\}$/g, "")
+          .trim(),
+      });
+      const condId = exprToNode(stmt.test, x - 220, y - 40);
+      if (condId) addConn(condId, "out", nid, "cond");
+      return;
+    }
+
+    if (stmt.type === "FunctionDeclaration") {
+      const params = stmt.params.map((p) => p.name).join(", ");
+      placeNode("func", x, y, { name: stmt.id.name, params });
+      return;
+    }
+
+    if (stmt.type === "TryStatement") {
+      placeNode("try_catch", x, y, {
+        try_body: code
+          .slice(stmt.block.start, stmt.block.end)
+          .replace(/^\{|\}$/g, "")
+          .trim(),
+        catch_var: stmt.handler?.param?.name || "err",
+        catch_body: stmt.handler
+          ? code
+              .slice(stmt.handler.body.start, stmt.handler.body.end)
+              .replace(/^\{|\}$/g, "")
+              .trim()
+          : "",
+      });
+      return;
+    }
+
+    if (stmt.type === "SwitchStatement") {
+      const cases = stmt.cases
+        .map((c) => code.slice(c.start, c.end))
+        .join("\n");
+      const nid = placeNode("switch_stmt", x, y, { cases });
+      const valId = exprToNode(stmt.discriminant, x - 220, y - 40);
+      if (valId) addConn(valId, "out", nid, "val");
+      return;
+    }
+
+    placeNode("raw_js", x, y, { code: code.slice(stmt.start, stmt.end) });
+  }
+
+  ast.body.forEach((stmt, i) => {
+    stmtToNodes(stmt, baseX + 280, baseY + i * 200);
   });
 
   drawWires();

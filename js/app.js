@@ -2290,6 +2290,7 @@ function applyTransform() {
   document.getElementById("grid-bg").style.backgroundSize =
     `${24 * zoom}px ${24 * zoom}px`;
   updateCoords();
+  drawMinimap();
 }
 
 function portEl(nid, dir, pid) {
@@ -2397,6 +2398,7 @@ function drawWires() {
       svg.appendChild(badge);
     });
     refreshPortStates();
+    drawMinimap();
   });
 }
 
@@ -2966,6 +2968,7 @@ document.addEventListener("keydown", (e) => {
       e.preventDefault();
       toggleSearch();
     }
+    if (e.key === "?") toggleShortcuts();
   }
 });
 
@@ -4557,6 +4560,115 @@ canvasWrap.addEventListener("mousedown", e => {
   framePreview.style.height = "0px";
   document.getElementById("canvas").appendChild(framePreview);
 });
+
+function drawMinimap() {
+  const canvas = document.getElementById("minimap-canvas");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  const nodeVals = Object.values(nodes);
+  if (!nodeVals.length) return;
+  const xs = nodeVals.map(n => n.x);
+  const ys = nodeVals.map(n => n.y);
+  const minX = Math.min(...xs) - 60, minY = Math.min(...ys) - 60;
+  const maxX = Math.max(...xs) + 240, maxY = Math.max(...ys) + 140;
+  const scale = Math.min(W / (maxX - minX), H / (maxY - minY)) * 0.88;
+  const offX = (W - (maxX - minX) * scale) / 2 - minX * scale;
+  const offY = (H - (maxY - minY) * scale) / 2 - minY * scale;
+  nodeVals.forEach(n => {
+    const def = TYPES[n.type];
+    ctx.globalAlpha = 0.75;
+    ctx.fillStyle = def?.col || "#303030";
+    const x = n.x * scale + offX, y = n.y * scale + offY;
+    const w = Math.max(5, 170 * scale), h = Math.max(3, 56 * scale);
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, 2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+  const cw = document.getElementById("canvas-wrap").getBoundingClientRect();
+  const vpX = (-pan.x / zoom) * scale + offX;
+  const vpY = (-pan.y / zoom) * scale + offY;
+  const vpW = (cw.width / zoom) * scale;
+  const vpH = (cw.height / zoom) * scale;
+  ctx.strokeStyle = "rgba(212,184,122,0.7)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(vpX, vpY, vpW, vpH);
+  ctx.fillStyle = "rgba(212,184,122,0.05)";
+  ctx.fillRect(vpX, vpY, vpW, vpH);
+  canvas._s = scale; canvas._ox = offX; canvas._oy = offY;
+}
+
+function syncMinimapBottom() {
+  const mm = document.getElementById("minimap");
+  if (!mm) return;
+  const panel = document.getElementById("console-panel");
+  mm.style.bottom = panel.classList.contains("open") ? panel.offsetHeight + "px" : "0";
+}
+
+document.getElementById("minimap-canvas").addEventListener("click", e => {
+  const canvas = e.target;
+  if (!canvas._s) return;
+  const r = canvas.getBoundingClientRect();
+  const wx = (e.clientX - r.left - canvas._ox) / canvas._s;
+  const wy = (e.clientY - r.top - canvas._oy) / canvas._s;
+  const cw = document.getElementById("canvas-wrap").getBoundingClientRect();
+  pan.x = cw.width / 2 - wx * zoom;
+  pan.y = cw.height / 2 - wy * zoom;
+  applyTransform();
+  drawWires();
+});
+
+function toggleShortcuts() {
+  const existing = document.getElementById("shortcuts-modal");
+  if (existing) { existing.remove(); return; }
+  const overlay = document.createElement("div");
+  overlay.className = "overlay open";
+  overlay.id = "shortcuts-modal";
+  overlay.innerHTML = `
+    <div class="modal" style="width:480px">
+      <div class="mtop">
+        <span class="mtitle">keyboard shortcuts</span>
+        <button class="mclose" onclick="document.getElementById('shortcuts-modal').remove()">✕</button>
+      </div>
+      <div class="mbody" style="column-count:2;column-gap:28px;padding:16px 20px">
+        ${[
+          ["canvas",""],
+          ["drag canvas","pan"],
+          ["scroll","zoom"],
+          ["shift + drag","draw frame"],
+          ["",""],
+          ["nodes",""],
+          ["click palette item","add node"],
+          ["drag node header","move"],
+          ["shift + click","multi-select"],
+          ["delete / backspace","delete selected"],
+          ["",""],
+          ["editing",""],
+          ["⌘/ctrl + z","undo"],
+          ["⌘/ctrl + shift+z","redo"],
+          ["⌘/ctrl + c","copy"],
+          ["⌘/ctrl + v","paste"],
+          ["⌘/ctrl + a","select all"],
+          ["",""],
+          ["search",""],
+          ["⌘/ctrl + f","find on canvas"],
+          ["⌘/ctrl + b","quick add node"],
+          ["escape","cancel / close"],
+          ["?","this panel"],
+        ].map(([k, v]) => k === "" ? `<div style="height:10px"></div>` : v === "" ?
+          `<div style="font-size:9px;font-weight:600;letter-spacing:.8px;color:var(--cream3);text-transform:uppercase;padding:2px 0 4px">${k}</div>` :
+          `<div style="display:flex;justify-content:space-between;gap:12px;padding:3px 0;font-size:11px;border-bottom:1px solid var(--b1)">
+            <span style="font-family:'DM Mono',monospace;color:var(--accent)">${k}</span>
+            <span style="color:var(--cream2)">${v}</span>
+          </div>`
+        ).join("")}
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
+}
 
 if (
   window.innerWidth < 768 ||

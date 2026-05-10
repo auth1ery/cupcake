@@ -2156,6 +2156,7 @@ let history = [],
   clipboard = [];
 let searchQ = "",
   searchVisible = false;
+let drawWiresScheduled = false;
 
 function uid() {
   return "n" + nid++;
@@ -2217,6 +2218,7 @@ function bezier(x1, y1, x2, y2) {
 }
 
 function getWireExpr(nodeId, portId) {
+  if (!nodeId || !nodes[nodeId]) return "?";
   const src = nodes[nodeId];
   const def = TYPES[src?.type];
   if (!def) return "?";
@@ -2233,10 +2235,12 @@ function getWireExpr(nodeId, portId) {
 }
 
 function drawWires() {
-  const svg = document.getElementById("svg-overlay");
-  Array.from(svg.querySelectorAll(".wire:not(.temp)")).forEach((e) =>
-    e.remove(),
-  );
+  if (drawWiresScheduled) return;
+  drawWiresScheduled = true;
+  requestAnimationFrame(() => {
+    drawWiresScheduled = false;
+    const svg = document.getElementById("svg-overlay");
+  Array.from(svg.querySelectorAll(".wire:not(.temp), .wire-badge")).forEach((e) => e.remove());
   Object.values(conns).forEach((c) => {
     const fp = portPos(c.fn, "out", c.fp);
     const tp = portPos(c.tn, "in", c.tp);
@@ -2271,7 +2275,7 @@ function drawWires() {
     txt.setAttribute("y", String(mid.y));
     try {
       const expr = getWireExpr(c.fn, c.fp);
-      txt.textContent = expr.length > 18 ? expr.slice(0, 16) + "…" : expr;
+      txt.textContent = expr && expr.length > 18 ? expr.slice(0, 16) + "…" : (expr || "");
     } catch {
       txt.textContent = "";
     }
@@ -2702,6 +2706,12 @@ document.addEventListener("mouseup", () => {
   }
 });
 
+document.addEventListener("mouseup", () => {
+  resizing = false;
+  sideResizing = false;
+  if (!resizing && !sideResizing) savePanelSizes();
+});
+  
 canvasWrap.addEventListener(
   "wheel",
   (e) => {
@@ -3129,6 +3139,7 @@ async function boot() {
   startLoader();
   buildSidebar();
   buildSaveLoad();
+  loadPanelSizes();
   await initDB();
   await refreshIndicators();
   applyTransform();
@@ -4073,6 +4084,31 @@ document.addEventListener("mousemove", e => {
 });
 
 document.addEventListener("mouseup", () => { sideResizing = false; });
+
+function savePanelSizes() {
+  localStorage.setItem("cupcake_sidebar_w", sidebar.offsetWidth);
+  localStorage.setItem("cupcake_console_h", consolePanel.offsetHeight);
+}
+
+function loadPanelSizes() {
+  const sw = localStorage.getItem("cupcake_sidebar_w");
+  const ch = localStorage.getItem("cupcake_console_h");
+  if (sw) {
+    const newW = parseInt(sw);
+    sidebar.style.width = newW + "px";
+    document.getElementById("canvas-wrap").style.left = newW + "px";
+    document.getElementById("console-panel").style.left = newW + "px";
+    document.getElementById("cat-corner").style.width = newW + "px";
+    document.getElementById("hint").style.left = `calc(50% + ${newW / 2}px)`;
+  }
+  if (ch) {
+    const newH = parseInt(ch);
+    consolePanel.style.height = newH + "px";
+    document.getElementById("canvas-wrap").style.bottom = newH + "px";
+    document.getElementById("sidebar").style.bottom = newH + "px";
+    document.getElementById("cat-corner").style.height = newH + "px";
+  }
+}
 
 const CAT_FRAMES = [
   (fly) =>

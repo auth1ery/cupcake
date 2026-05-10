@@ -2157,7 +2157,7 @@ let history = [],
 let searchQ = "",
   searchVisible = false;
 let drawWiresScheduled = false;
-
+let frames = {};
 function uid() {
   return "n" + nid++;
 }
@@ -2372,47 +2372,62 @@ function deleteNode(id) {
 }
 
 function snapshot() {
-  history.push(JSON.stringify({ nodes, conns, nid }));
+  history.push(JSON.stringify({ nodes, conns, frames, nid }));
   if (history.length > 60) history.shift();
   future = [];
 }
 
 function undo() {
   if (!history.length) return toast("nothing to undo");
-  future.push(JSON.stringify({ nodes, conns, nid }));
+  future.push(JSON.stringify({ nodes, conns, frames, nid }));
   const s = JSON.parse(history.pop());
-  nodes = s.nodes;
-  conns = s.conns;
-  nid = s.nid;
-  document.querySelectorAll(".node").forEach((e) => e.remove());
-  Object.keys(nodes).forEach((id) => renderNode(id));
-  drawWires();
-  showHint();
-  toast("undo");
+  nodes = s.nodes; conns = s.conns; frames = s.frames || {}; nid = s.nid;
+  document.querySelectorAll(".node").forEach(e => e.remove());
+  document.querySelectorAll(".frame").forEach(e => e.remove());
+  Object.keys(frames).forEach(id => renderFrame(id));
+  Object.keys(nodes).forEach(id => renderNode(id));
+  drawWires(); showHint(); toast("undo");
 }
 
 function redo() {
   if (!future.length) return toast("nothing to redo");
-  history.push(JSON.stringify({ nodes, conns, nid }));
+  history.push(JSON.stringify({ nodes, conns, frames, nid }));
   const s = JSON.parse(future.pop());
-  nodes = s.nodes;
-  conns = s.conns;
-  nid = s.nid;
-  document.querySelectorAll(".node").forEach((e) => e.remove());
-  Object.keys(nodes).forEach((id) => renderNode(id));
-  drawWires();
-  showHint();
-  toast("redo");
+  nodes = s.nodes; conns = s.conns; frames = s.frames || {}; nid = s.nid;
+  document.querySelectorAll(".node").forEach(e => e.remove());
+  document.querySelectorAll(".frame").forEach(e => e.remove());
+  Object.keys(frames).forEach(id => renderFrame(id));
+  Object.keys(nodes).forEach(id => renderNode(id));
+  drawWires(); showHint(); toast("redo");
 }
 
 function nukeAll() {
   snapshot();
-  nodes = {};
-  conns = {};
-  document.querySelectorAll(".node").forEach((e) => e.remove());
-  multiSel.clear();
-  drawWires();
-  showHint();
+  nodes = {}; conns = {}; frames = {};
+  document.querySelectorAll(".node").forEach(e => e.remove());
+  document.querySelectorAll(".frame").forEach(e => e.remove());
+  multiSel.clear(); drawWires(); showHint();
+}
+
+async function saveSlot(slot) {
+  closeAllDD();
+  await dbSet(slot, JSON.stringify({ nodes, conns, frames, nid }));
+  await refreshIndicators();
+  toast(`saved to slot ${slot}`);
+}
+
+async function loadSlot(slot) {
+  closeAllDD();
+  const raw = await dbGet(slot);
+  if (!raw) { toast(`slot ${slot} is empty`); return; }
+  const data = JSON.parse(raw);
+  nukeAll();
+  nodes = data.nodes || {}; conns = data.conns || {};
+  frames = data.frames || {}; nid = data.nid || 100;
+  document.querySelectorAll(".frame").forEach(e => e.remove());
+  Object.keys(frames).forEach(id => renderFrame(id));
+  Object.keys(nodes).forEach(id => renderNode(id));
+  drawWires(); showHint(); toast(`loaded slot ${slot}`);
 }
 
 function renderNode(id) {
@@ -3110,31 +3125,6 @@ function dbKeys() {
       .getAllKeys();
     req.onsuccess = (e) => res(e.target.result);
   });
-}
-
-async function saveSlot(slot) {
-  closeAllDD();
-  await dbSet(slot, JSON.stringify({ nodes, conns, nid }));
-  await refreshIndicators();
-  toast(`saved to slot ${slot}`);
-}
-
-async function loadSlot(slot) {
-  closeAllDD();
-  const raw = await dbGet(slot);
-  if (!raw) {
-    toast(`slot ${slot} is empty`);
-    return;
-  }
-  const data = JSON.parse(raw);
-  nukeAll();
-  nodes = data.nodes || {};
-  conns = data.conns || {};
-  nid = data.nid || 100;
-  Object.keys(nodes).forEach((id) => renderNode(id));
-  drawWires();
-  showHint();
-  toast(`loaded slot ${slot}`);
 }
 
 async function refreshIndicators() {
@@ -4237,6 +4227,105 @@ function tickCat() {
 }
 
 setInterval(tickCat, 320);
+
+let dragFrame = null, dragFrameStart = null, dragFrameOrigin = null, dragFrameNodeOrigins = null;
+let resizeFrame = null, resizeFrameStart = null, resizeFrameOrigin = null;
+
+function nodesInsideFrame(fid) {
+  const f = frames[fid];
+  return Object.values(nodes).filter(n =>
+    n.x + 80 > f.x && n.x < f.x + f.w &&
+    n.y + 20 > f.y && n.y < f.y + f.h
+  );
+}
+
+function makeFrame(x, y, w, h) {
+  snapshot();
+  const id = uid();
+  frames[id] = { id, x, y, w: Math.max(120, w), h: Math.max(80, h), label: "group" };
+  renderFrame(id);
+  return id;
+}
+
+function deleteFrame(id) {
+  snapshot();
+  delete frames[id];
+  document.getElementById("frame-" + id)?.remove();
+}
+
+function renderFrame(id) {
+  const f = frames[id];
+  const el = document.createElement("div");
+  el.className = "frame";
+  el.id = "frame-" + id;
+  el.style.left = f.x + "px";
+  el.style.top = f.y + "px";
+  el.style.width = f.w + "px";
+  el.style.height = f.h + "px";
+
+  const label = document.createElement("input");
+  label.className = "frame-label";
+  label.value = f.label;
+  label.spellcheck = false;
+  label.addEventListener("input", e => { f.label = e.target.value; });
+  label.addEventListener("mousedown", e => e.stopPropagation());
+
+  const del = document.createElement("button");
+  del.className = "frame-delete";
+  del.textContent = "×";
+  del.addEventListener("click", e => { e.stopPropagation(); deleteFrame(id); });
+
+  const resizeHandle = document.createElement("div");
+  resizeHandle.className = "frame-resize";
+  resizeHandle.addEventListener("mousedown", e => {
+    e.stopPropagation();
+    e.preventDefault();
+    resizeFrame = id;
+    resizeFrameStart = { x: e.clientX, y: e.clientY };
+    resizeFrameOrigin = { w: f.w, h: f.h };
+  });
+
+  el.appendChild(label);
+  el.appendChild(del);
+  el.appendChild(resizeHandle);
+
+  el.addEventListener("mousedown", e => {
+    if (e.target === resizeHandle || e.target === label || e.target === del) return;
+    e.stopPropagation();
+    document.querySelectorAll(".frame").forEach(f => f.classList.remove("sel-frame"));
+    el.classList.add("sel-frame");
+    dragFrame = id;
+    dragFrameStart = { x: e.clientX, y: e.clientY };
+    dragFrameOrigin = { x: f.x, y: f.y };
+    dragFrameNodeOrigins = {};
+    nodesInsideFrame(id).forEach(n => {
+      dragFrameNodeOrigins[n.id] = { x: n.x, y: n.y };
+    });
+  });
+
+  document.getElementById("canvas").insertBefore(el, document.getElementById("canvas").firstChild);
+}
+
+// secret: alt + drag to make a frame
+let drawingFrame = false, frameDrawStart = null, framePreview = null;
+
+canvasWrap.addEventListener("mousedown", e => {
+  if (e.button !== 0 || !e.altKey) return;
+  if (e.target !== canvasWrap && e.target.id !== "grid-bg" && e.target.id !== "canvas" && e.target.id !== "svg-overlay") return;
+  e.preventDefault();
+  e.stopPropagation();
+  drawingFrame = true;
+  const rect = document.getElementById("canvas").getBoundingClientRect();
+  frameDrawStart = {
+    x: (e.clientX - rect.left) / zoom,
+    y: (e.clientY - rect.top) / zoom
+  };
+  framePreview = document.createElement("div");
+  framePreview.style.cssText = `position:absolute;border:1.5px dashed var(--accent2);border-radius:10px;background:rgba(212,184,122,0.05);pointer-events:none;z-index:2;`;
+  framePreview.style.left = frameDrawStart.x + "px";
+  framePreview.style.top = frameDrawStart.y + "px";
+  document.getElementById("canvas").appendChild(framePreview);
+});
 
 if (
   window.innerWidth < 768 ||

@@ -4138,10 +4138,18 @@ function loadPanelSizes() {
 }
 
 const cur = document.getElementById("cursor");
+const curDot = document.getElementById("cursor-dot");
+
+let mouseX = 0, mouseY = 0;
+let curX = 0, curY = 0;
+const ease = 0.13;
 
 document.addEventListener("mousemove", (e) => {
-  cur.style.left = e.clientX + "px";
-  cur.style.top = e.clientY + "px";
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+
+  curDot.style.left = mouseX + "px";
+  curDot.style.top = mouseY + "px";
 
   const el = document.elementFromPoint(e.clientX, e.clientY);
   cur.className = "";
@@ -4152,11 +4160,7 @@ document.addEventListener("mousemove", (e) => {
 
   if (el.classList.contains("port")) {
     cur.classList.add("state-crosshair");
-  } else if (
-    el.tagName === "INPUT" ||
-    el.tagName === "TEXTAREA" ||
-    el.isContentEditable
-  ) {
+  } else if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable) {
     cur.classList.add("state-text");
   } else if (
     el.tagName === "BUTTON" ||
@@ -4169,11 +4173,7 @@ document.addEventListener("mousemove", (e) => {
     el.classList.contains("wire")
   ) {
     cur.classList.add("state-pointer");
-  } else if (
-    el.classList.contains("node-head") ||
-    computed === "grab" ||
-    computed === "grabbing"
-  ) {
+  } else if (el.classList.contains("node-head") || computed === "grab" || computed === "grabbing") {
     cur.classList.add("state-grab");
   } else if (computed === "ns-resize") {
     cur.classList.add("state-ns");
@@ -4181,6 +4181,14 @@ document.addEventListener("mousemove", (e) => {
     cur.classList.add("state-ew");
   }
 });
+
+(function loop() {
+  curX += (mouseX - curX) * ease;
+  curY += (mouseY - curY) * ease;
+  cur.style.left = curX + "px";
+  cur.style.top = curY + "px";
+  requestAnimationFrame(loop);
+})();
 
 document.addEventListener("mousedown", () => cur.classList.add("big"));
 document.addEventListener("mouseup", () => cur.classList.remove("big"));

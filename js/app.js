@@ -2918,6 +2918,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     clearPending();
     hideSearch();
+    hideFind();
   }
   if (!typing && (e.key === "Delete" || e.key === "Backspace")) {
     if (multiSel.size) {
@@ -2965,6 +2966,14 @@ document.addEventListener("keydown", (e) => {
       refreshMultiSel();
     }
     if (e.key === "f") {
+      e.preventDefault();
+      toggleSearch();
+    }
+    if (e.key === "f") {
+      e.preventDefault();
+      toggleFind();
+    }
+    if (e.key === "b") {
       e.preventDefault();
       toggleSearch();
     }
@@ -4669,6 +4678,101 @@ function toggleShortcuts() {
   document.body.appendChild(overlay);
   overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
 }
+
+document.getElementById("download-btn").addEventListener("click", () => {
+  const cb = document.getElementById("modal-body").querySelector(".codebox");
+  if (!cb) return;
+  const blob = new Blob([cb.textContent], { type: "text/javascript" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "cupcake-export.js";
+  a.click();
+  URL.revokeObjectURL(url);
+  toast("downloaded!");
+});
+
+let findVisible = false;
+
+function toggleFind() {
+  if (searchVisible) hideSearch();
+  findVisible = !findVisible;
+  const bar = document.getElementById("find-bar");
+  if (findVisible) {
+    bar.classList.add("open");
+    const inp = document.getElementById("find-input");
+    inp.value = "";
+    inp.focus();
+    renderFindResults("");
+  } else hideFind();
+}
+
+function hideFind() {
+  findVisible = false;
+  document.getElementById("find-bar").classList.remove("open");
+  document.getElementById("find-results").innerHTML = "";
+}
+
+function renderFindResults(q) {
+  const res = document.getElementById("find-results");
+  res.innerHTML = "";
+  const all = Object.values(nodes);
+  if (!all.length) {
+    const r = document.createElement("div");
+    r.className = "search-row";
+    r.style.color = "var(--cream3)";
+    r.textContent = "canvas is empty";
+    res.appendChild(r);
+    return;
+  }
+  const lq = q.toLowerCase();
+  const matches = all.filter(n => {
+    if (!q) return true;
+    const def = TYPES[n.type];
+    if (def?.label.toLowerCase().includes(lq)) return true;
+    return Object.values(n.f || {}).some(v => String(v).toLowerCase().includes(lq));
+  }).slice(0, 12);
+  if (!matches.length) {
+    const r = document.createElement("div");
+    r.className = "search-row";
+    r.style.color = "var(--cream3)";
+    r.textContent = "no matches";
+    res.appendChild(r);
+    return;
+  }
+  matches.forEach(n => {
+    const def = TYPES[n.type];
+    const preview = Object.values(n.f || {}).find(v => v)?.[0] || "";
+    const hint = preview ? ` · ${String(preview).slice(0, 22)}` : "";
+    const row = document.createElement("div");
+    row.className = "search-row";
+    row.innerHTML = `<span class="search-dot" style="background:${def?.col}"></span><span class="search-label">${def?.label || n.type}${hint}</span><span class="search-cat">${Math.round(n.x)}, ${Math.round(n.y)}</span>`;
+    row.addEventListener("click", () => { jumpToNode(n.id); hideFind(); });
+    res.appendChild(row);
+  });
+}
+
+function jumpToNode(id) {
+  const n = nodes[id];
+  if (!n) return;
+  const cw = document.getElementById("canvas-wrap").getBoundingClientRect();
+  pan.x = cw.width / 2 - n.x * zoom;
+  pan.y = cw.height / 2 - n.y * zoom;
+  applyTransform();
+  drawWires();
+  selectNode(id, false);
+  const el = document.getElementById("node-" + id);
+  if (!el) return;
+  el.style.transition = "box-shadow 0.12s";
+  el.style.boxShadow = "0 0 0 3px var(--accent), 0 8px 32px rgba(0,0,0,.6)";
+  setTimeout(() => { el.style.boxShadow = ""; setTimeout(() => el.style.transition = "", 300); }, 900);
+}
+
+document.getElementById("find-input").addEventListener("input", e => renderFindResults(e.target.value.trim()));
+document.getElementById("find-input").addEventListener("keydown", e => {
+  if (e.key === "Escape") hideFind();
+  if (e.key === "Enter") { const first = document.querySelector("#find-results .search-row"); if (first) first.click(); }
+});
 
 if (
   window.innerWidth < 768 ||

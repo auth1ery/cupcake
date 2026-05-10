@@ -1290,3 +1290,33 @@ input, select, textarea, button, a {
   display: block;
   cursor: crosshair;
 }
+
+#find-bar {
+  position: fixed;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 420px;
+  background: var(--s1);
+  border: 1px solid var(--b2);
+  border-radius: 12px;
+  padding: 0 12px;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  z-index: 600;
+  box-shadow: 0 16px 50px rgba(0,0,0,.7);
+  flex-direction: column;
+}
+#find-bar.open { display: flex; }
+#find-bar #find-input {
+  width: 100%;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--cream);
+  font-family: "DM Mono", monospace;
+  font-size: 13px;
+  padding: 11px 36px;
+  border-radius: 12px 12px 0 0;
+}

@@ -1116,26 +1116,43 @@ body {
 
 #cursor {
   position: fixed;
-  width: 10px;
-  height: 10px;
-  background: var(--accent);
-  border-radius: 50%;
   pointer-events: none;
   z-index: 9999999;
   transform: translate(-50%, -50%);
-  transition:
-    width 0.12s,
-    height 0.12s,
-    opacity 0.12s;
-  mix-blend-mode: difference;
+  transition: transform 0.08s;
 }
 
-* {
-  cursor: none !important;
+#cursor-h,
+#cursor-v {
+  position: absolute;
+  background: var(--accent);
+  border-radius: 1px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.12s, height 0.12s, opacity 0.12s, background 0.12s;
 }
 
-#cursor.big {
-  width: 24px;
-  height: 24px;
-  opacity: 0.5;
-}
+#cursor-h { width: 12px; height: 2px; }
+#cursor-v { width: 2px; height: 12px; }
+
+#cursor.state-text #cursor-h { width: 2px; height: 18px; }
+#cursor.state-text #cursor-v { width: 2px; height: 18px; opacity: 0; }
+
+#cursor.state-pointer #cursor-h { width: 8px; height: 8px; border-radius: 50%; }
+#cursor.state-pointer #cursor-v { opacity: 0; }
+
+#cursor.state-grab #cursor-h  { width: 14px; height: 2px; background: var(--cream2); }
+#cursor.state-grab #cursor-v  { width: 2px; height: 14px; background: var(--cream2); }
+
+#cursor.state-crosshair #cursor-h { width: 16px; height: 1px; background: var(--accent2); }
+#cursor.state-crosshair #cursor-v { width: 1px; height: 16px; background: var(--accent2); }
+
+#cursor.state-ns #cursor-h { width: 2px; height: 16px; }
+#cursor.state-ns #cursor-v { opacity: 0; }
+
+#cursor.state-ew #cursor-h { width: 16px; height: 2px; }
+#cursor.state-ew #cursor-v { opacity: 0; }
+
+#cursor.big #cursor-h { width: 20px; height: 2px; }
+#cursor.big #cursor-v { width: 2px; height: 20px; }

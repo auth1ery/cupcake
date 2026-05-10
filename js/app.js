@@ -4022,6 +4022,58 @@ document.addEventListener("contextmenu", (e) => {
   ]);
 });
 
+const consolePanel = document.getElementById("console-panel");
+const resizeHandle = document.createElement("div");
+resizeHandle.style.cssText = "position:absolute;top:-4px;left:0;right:0;height:8px;cursor:ns-resize;z-index:200;";
+consolePanel.appendChild(resizeHandle);
+
+let resizing = false, resizeStartY = 0, resizeStartH = 0;
+
+resizeHandle.addEventListener("mousedown", e => {
+  resizing = true;
+  resizeStartY = e.clientY;
+  resizeStartH = consolePanel.offsetHeight;
+  e.preventDefault();
+});
+
+document.addEventListener("mousemove", e => {
+  if (!resizing) return;
+  const delta = resizeStartY - e.clientY;
+  const newH = Math.max(80, Math.min(window.innerHeight - 100, resizeStartH + delta));
+  consolePanel.style.height = newH + "px";
+  document.getElementById("canvas-wrap").style.bottom = newH + "px";
+  document.getElementById("sidebar").style.bottom = newH + "px";
+  document.getElementById("cat-corner").style.height = newH + "px";
+});
+
+document.addEventListener("mouseup", () => { resizing = false; });
+
+const sidebar = document.getElementById("sidebar");
+const sideResizeHandle = document.createElement("div");
+sideResizeHandle.style.cssText = "position:absolute;top:0;right:-4px;bottom:0;width:8px;cursor:ew-resize;z-index:200;";
+sidebar.appendChild(sideResizeHandle);
+
+let sideResizing = false, sideStartX = 0, sideStartW = 0;
+
+sideResizeHandle.addEventListener("mousedown", e => {
+  sideResizing = true;
+  sideStartX = e.clientX;
+  sideStartW = sidebar.offsetWidth;
+  e.preventDefault();
+});
+
+document.addEventListener("mousemove", e => {
+  if (!sideResizing) return;
+  const newW = Math.max(140, Math.min(400, sideStartW + e.clientX - sideStartX));
+  sidebar.style.width = newW + "px";
+  document.getElementById("canvas-wrap").style.left = newW + "px";
+  document.getElementById("console-panel").style.left = newW + "px";
+  document.getElementById("cat-corner").style.width = newW + "px";
+  document.getElementById("hint").style.left = `calc(50% + ${newW / 2}px)`;
+});
+
+document.addEventListener("mouseup", () => { sideResizing = false; });
+
 const CAT_FRAMES = [
   (fly) =>
     `  /\\_/\\  ${fly[0]}\n ( ·ω· ) ${fly[1]}\n  (づ づ)${fly[2]}\n   |  |  ${fly[3]}`,

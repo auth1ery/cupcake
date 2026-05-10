@@ -2519,12 +2519,12 @@ function appendConsoleEntry(output, level, args, ms) {
 }
 
 function runCode() {
-  const modal = document.getElementById("run-modal");
+  const panel = document.getElementById("console-panel");
   const output = document.getElementById("run-output");
-  const title = document.getElementById("run-modal-title");
   output.innerHTML = "";
-  modal.classList.add("open");
-  title.textContent = "console";
+  panel.classList.add("open");
+  document.getElementById("canvas-wrap").classList.add("console-open");
+  document.getElementById("sidebar").classList.add("console-open");
 
   let code;
   try {
@@ -2619,11 +2619,13 @@ function finishRun(output, hadError, start) {
 }
 
 document.getElementById("run-btn").addEventListener("click", runCode);
-document.getElementById("run-modal-close").addEventListener("click", () => {
-  document.getElementById("run-modal").classList.remove("open");
-});
 document.getElementById("run-clear-btn").addEventListener("click", () => {
   document.getElementById("run-output").innerHTML = "";
+});
+document.getElementById("console-close-btn").addEventListener("click", () => {
+  document.getElementById("console-panel").classList.remove("open");
+  document.getElementById("canvas-wrap").classList.remove("console-open");
+  document.getElementById("sidebar").classList.remove("console-open");
 });
 
 boot();

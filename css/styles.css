@@ -699,3 +699,137 @@ body {
   color: var(--accent);
   justify-content: center;
 }
+
+.run-btn {
+  background: #1a2e1a;
+  border-color: #2a4a2a;
+  color: #6fcf6f;
+}
+.run-btn:hover {
+  background: #1f381f;
+  border-color: #3a6a3a;
+  color: #8fef8f;
+}
+
+.modal-wide {
+  width: 700px;
+}
+
+.console-body {
+  background: #080808;
+  padding: 0;
+  font-family: "DM Mono", monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  min-height: 320px;
+  max-height: 420px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--b2) transparent;
+}
+
+.console-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 4px 14px;
+  border-bottom: 1px solid #111;
+}
+.console-entry:hover {
+  background: #0e0e0e;
+}
+.console-entry.log {
+  color: var(--cream);
+}
+.console-entry.info {
+  color: #7ab8e8;
+}
+.console-entry.warn {
+  color: #e8c46a;
+  background: #1a1500;
+  border-left: 2px solid #7a6000;
+}
+.console-entry.error {
+  color: #e87070;
+  background: #1a0808;
+  border-left: 2px solid #7a0000;
+}
+.console-entry.system {
+  color: var(--cream3);
+  font-style: italic;
+}
+
+.console-badge {
+  font-size: 10px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  width: 14px;
+  text-align: center;
+}
+.console-entry.warn .console-badge {
+  color: #e8c46a;
+}
+.console-entry.error .console-badge {
+  color: #e87070;
+}
+.console-entry.log .console-badge {
+  color: var(--cream3);
+}
+.console-entry.info .console-badge {
+  color: #7ab8e8;
+}
+
+.console-text {
+  flex: 1;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.console-meta {
+  font-size: 10px;
+  color: var(--cream3);
+  flex-shrink: 0;
+  margin-top: 2px;
+  font-style: normal;
+}
+
+.console-input-row {
+  padding: 7px 14px;
+  border-top: 1px solid var(--b1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: "DM Mono", monospace;
+  font-size: 12px;
+  background: #080808;
+  border-radius: 0 0 13px 13px;
+}
+.console-chevron {
+  color: var(--accent);
+}
+.console-idle {
+  color: var(--cream3);
+  font-style: italic;
+}
+
+.console-run-header {
+  padding: 6px 14px;
+  font-size: 10px;
+  color: var(--cream3);
+  border-bottom: 1px solid #181818;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: "DM Mono", monospace;
+  background: #0a0a0a;
+}
+.console-run-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #3a9a3a;
+  flex-shrink: 0;
+}
+.console-run-dot.err {
+  background: #9a3a3a;
+}

@@ -2483,4 +2483,147 @@ async function parseJSIntoNodes(code) {
   return count;
 }
 
+function formatVal(v) {
+  if (v === null) return "null";
+  if (v === undefined) return "undefined";
+  if (typeof v === "string") return v;
+  if (typeof v === "number" || typeof v === "boolean") return String(v);
+  if (v instanceof Error) return v.stack || v.message;
+  try {
+    const s = JSON.stringify(v, null, 2);
+    if (s && s.length < 2000) return s;
+    return String(v);
+  } catch {
+    return String(v);
+  }
+}
+
+function appendConsoleEntry(output, level, args, ms) {
+  const badges = { log: "·", info: "i", warn: "▲", error: "✕", system: "·" };
+  const entry = document.createElement("div");
+  entry.className = "console-entry " + level;
+  const badge = document.createElement("span");
+  badge.className = "console-badge";
+  badge.textContent = badges[level] || "·";
+  const text = document.createElement("span");
+  text.className = "console-text";
+  text.textContent = args.map(formatVal).join(" ");
+  const meta = document.createElement("span");
+  meta.className = "console-meta";
+  meta.textContent = ms + "ms";
+  entry.appendChild(badge);
+  entry.appendChild(text);
+  if (level !== "system") entry.appendChild(meta);
+  output.appendChild(entry);
+  output.scrollTop = output.scrollHeight;
+}
+
+function runCode() {
+  const modal = document.getElementById("run-modal");
+  const output = document.getElementById("run-output");
+  const title = document.getElementById("run-modal-title");
+  output.innerHTML = "";
+  modal.classList.add("open");
+  title.textContent = "console";
+
+  let code;
+  try {
+    code = compileCode();
+  } catch (e) {
+    appendConsoleEntry(output, "error", ["compile error: " + e.message], 0);
+    return;
+  }
+
+  const header = document.createElement("div");
+  header.className = "console-run-header";
+  const dot = document.createElement("span");
+  dot.className = "console-run-dot";
+  dot.id = "run-dot";
+  const label = document.createElement("span");
+  label.textContent = "running...";
+  label.id = "run-header-label";
+  header.appendChild(dot);
+  header.appendChild(label);
+  output.appendChild(header);
+
+  const start = performance.now();
+  const entries = [];
+
+  const _log = console.log;
+  const _error = console.error;
+  const _warn = console.warn;
+  const _info = console.info;
+  const _alert = window.alert;
+
+  const cap =
+    (level) =>
+    (...args) => {
+      const ms = Math.round(performance.now() - start);
+      appendConsoleEntry(output, level, args, ms);
+      entries.push({ level, args });
+    };
+
+  console.log = cap("log");
+  console.error = cap("error");
+  console.warn = cap("warn");
+  console.info = cap("info");
+  window.alert = (msg) => {
+    const ms = Math.round(performance.now() - start);
+    appendConsoleEntry(output, "log", ["[alert] " + String(msg)], ms);
+  };
+
+  let hadError = false;
+  try {
+    const fn = new Function(code);
+    const result = fn();
+    if (result instanceof Promise) {
+      result.catch((e) => {
+        const ms = Math.round(performance.now() - start);
+        appendConsoleEntry(output, "error", [e], ms);
+        hadError = true;
+        finishRun(output, hadError, start);
+      });
+      result.then(() => finishRun(output, hadError, start));
+    } else {
+      finishRun(output, hadError, start);
+    }
+  } catch (e) {
+    hadError = true;
+    const ms = Math.round(performance.now() - start);
+    appendConsoleEntry(output, "error", [e], ms);
+    finishRun(output, hadError, start);
+  } finally {
+    console.log = _log;
+    console.error = _error;
+    console.warn = _warn;
+    console.info = _info;
+    window.alert = _alert;
+  }
+}
+
+function finishRun(output, hadError, start) {
+  const ms = Math.round(performance.now() - start);
+  const dot = document.getElementById("run-dot");
+  const label = document.getElementById("run-header-label");
+  if (dot) dot.classList.toggle("err", hadError);
+  if (label)
+    label.textContent = hadError
+      ? "finished with errors  " + ms + "ms"
+      : "finished in " + ms + "ms";
+  if (
+    !hadError &&
+    output.querySelectorAll(".console-entry:not(.system)").length === 0
+  ) {
+    appendConsoleEntry(output, "system", ["(no output)"], ms);
+  }
+}
+
+document.getElementById("run-btn").addEventListener("click", runCode);
+document.getElementById("run-modal-close").addEventListener("click", () => {
+  document.getElementById("run-modal").classList.remove("open");
+});
+document.getElementById("run-clear-btn").addEventListener("click", () => {
+  document.getElementById("run-output").innerHTML = "";
+});
+
 boot();

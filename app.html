@@ -29,6 +29,7 @@
         <span id="coord-y">0</span> &nbsp; zoom: <span id="coord-z">100%</span>
       </div>
       <div class="sep"></div>
+      <button class="btn run-btn" id="run-btn">run ▶</button>
       <button class="btn go" id="compile-btn">compile →</button>
     </div>
 
@@ -64,6 +65,23 @@
         <div class="mfoot" id="modal-foot">
           <button class="btn" id="copy-btn">copy</button>
           <button class="btn go" id="done-btn">done</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay" id="run-modal">
+      <div class="modal modal-wide">
+        <div class="mtop">
+          <span class="mtitle" id="run-modal-title">console</span>
+          <div style="display: flex; gap: 6px; align-items: center">
+            <button class="btn" id="run-clear-btn">clear</button>
+            <button class="mclose" id="run-modal-close">✕</button>
+          </div>
+        </div>
+        <div class="mbody console-body" id="run-output"></div>
+        <div class="console-input-row">
+          <span class="console-chevron">&gt;</span>
+          <span class="console-idle">ready</span>
         </div>
       </div>
     </div>

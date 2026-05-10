@@ -1114,10 +1114,6 @@ body {
   scrollbar-color: var(--b2) transparent;
 }
 
-* {
-  cursor: none !important;
-}
-
 #cursor {
   position: fixed;
   width: 10px;
@@ -1125,7 +1121,7 @@ body {
   background: var(--accent);
   border-radius: 50%;
   pointer-events: none;
-  z-index: 99999;
+  z-index: 9999999;
   transform: translate(-50%, -50%);
   transition:
     width 0.12s,
@@ -1133,6 +1129,11 @@ body {
     opacity 0.12s;
   mix-blend-mode: difference;
 }
+
+* {
+  cursor: none !important;
+}
+
 #cursor.big {
   width: 24px;
   height: 24px;

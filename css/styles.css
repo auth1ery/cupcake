@@ -1101,3 +1101,15 @@ body {
 .wire-badge {
   pointer-events: none;
 }
+
+#sidebar-panes {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.tab-pane {
+  scrollbar-width: thin;
+  scrollbar-color: var(--b2) transparent;
+}

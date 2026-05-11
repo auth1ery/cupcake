@@ -1408,3 +1408,131 @@ input, select, textarea, button, a {
   padding: 3px 8px;
   cursor: pointer;
 }
+
+.settings-tabs {
+  width: 110px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--b1);
+  display: flex;
+  flex-direction: column;
+  padding: 8px 6px;
+  gap: 2px;
+  overflow-y: auto;
+}
+
+.settings-tab {
+  padding: 7px 10px;
+  border-radius: 7px;
+  font-size: 11px;
+  color: var(--cream2);
+  cursor: pointer;
+  transition: 100ms;
+  border: 1px solid transparent;
+}
+
+.settings-tab:hover {
+  background: var(--s2);
+  color: var(--cream);
+}
+
+.settings-tab.active {
+  background: var(--s2);
+  border-color: var(--b1);
+  color: var(--accent);
+}
+
+.settings-panes {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 16px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--b2) transparent;
+}
+
+.settings-pane {
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings-pane.active {
+  display: flex;
+}
+
+.settings-section-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--cream3);
+  padding: 14px 0 4px;
+  border-bottom: 1px solid var(--b1);
+  margin-bottom: 4px;
+}
+
+.settings-section-label:first-child {
+  padding-top: 4px;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--b1);
+  gap: 12px;
+}
+
+.settings-row-label {
+  font-size: 11px;
+  color: var(--cream2);
+  flex-shrink: 0;
+}
+
+.settings-row-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-color {
+  width: 32px;
+  height: 22px;
+  border: 1px solid var(--b2);
+  border-radius: 5px;
+  background: none;
+  cursor: pointer;
+  padding: 1px;
+}
+
+.settings-range {
+  width: 120px;
+  accent-color: var(--accent);
+}
+
+.settings-range-val {
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+  color: var(--cream3);
+  min-width: 28px;
+  text-align: right;
+}
+
+.settings-toggle {
+  background: var(--s3);
+  border: 1px solid var(--b2);
+  border-radius: 5px;
+  color: var(--cream3);
+  font-family: "Syne", sans-serif;
+  font-size: 10px;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: 120ms;
+  min-width: 40px;
+}
+
+.settings-toggle.on {
+  background: var(--accent2);
+  border-color: var(--accent);
+  color: var(--cream);
+}

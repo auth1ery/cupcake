@@ -2285,10 +2285,8 @@ document.getElementById("module-btn").addEventListener("click", () => {
 function applyTransform() {
   document.getElementById("canvas").style.transform =
     `translate(${pan.x}px,${pan.y}px) scale(${zoom})`;
-  document.getElementById("grid-bg").style.backgroundPosition =
-    `${pan.x}px ${pan.y}px`;
-  document.getElementById("grid-bg").style.backgroundSize =
-    `${24 * zoom}px ${24 * zoom}px`;
+  document.getElementById("grid-bg").style.backgroundPosition = `${pan.x}px ${pan.y}px`;
+  SETTINGS.gridSize && applyGridStyle();
   updateCoords();
   drawMinimap();
 }
@@ -2310,6 +2308,9 @@ function portPos(nid, dir, pid) {
 }
 
 function bezier(x1, y1, x2, y2) {
+  if (SETTINGS.wireStyle === "straight") {
+    return `M ${x1} ${y1} L ${x2} ${y2}`;
+  }
   const dx = Math.abs(x2 - x1) * 0.55;
   return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
 }
@@ -2451,7 +2452,7 @@ function makeNode(type, x, y) {
   const id = uid();
   const f = {};
   def.fields.forEach((fld) => (f[fld.id] = fld.def || ""));
-  nodes[id] = { id, type, x, y, f };
+  nodes[id] = { id, type, x: snapToGrid(x), y: snapToGrid(y), f };
   renderNode(id);
   drawWires();
   showHint();
@@ -3436,10 +3437,469 @@ function openRenamePopup(slot, anchor) {
   }, 0);
 }
 
+const SETTINGS_DEFAULTS = {
+  accentColor: "#d4b87a",
+  accent2Color: "#8a7040",
+  bgColor: "#090909",
+  s1Color: "#101010",
+  s2Color: "#161616",
+  s3Color: "#1e1e1e",
+  b1Color: "#252525",
+  b2Color: "#303030",
+  creamColor: "#ede3d2",
+  cream2Color: "#a89880",
+  cream3Color: "#5e5040",
+  colVal: "#5888b4",
+  colMath: "#b07840",
+  colVar: "#5a8f5a",
+  colLogic: "#8060b0",
+  colFlow: "#b04848",
+  colFn: "#c4a050",
+  colOut: "#909090",
+  colString: "#4a9e7a",
+  colArray: "#6070c0",
+  colObj: "#a05070",
+  colConv: "#7090a0",
+  colAsync: "#906040",
+  colDom: "#507870",
+  colDate: "#705090",
+  gridStyle: "dots",
+  gridSize: 24,
+  gridOpacity: 1,
+  snapToGrid: false,
+  snapSize: 20,
+  sidebarOpacity: 1,
+  sidebarBlur: 0,
+  consoleOpacity: 1,
+  consoleBlur: 0,
+  toolbarOpacity: 1,
+  toolbarBlur: 0,
+  nodeOpacity: 1,
+  nodeBlur: 0,
+  nodeBorderRadius: 12,
+  nodeHeadRadius: 11,
+  wireStyle: "bezier",
+  wireWidth: 2,
+  wireOpacity: 1,
+  showWireBadges: true,
+  catAnimation: true,
+  compileDelay: true,
+  spawnAnimation: true,
+  uiFontSize: 13,
+  cursorColor: "#d4b87a",
+  cursorSize: 1,
+};
+
+let SETTINGS = { ...SETTINGS_DEFAULTS };
+
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem("cupcake_settings");
+    if (raw) SETTINGS = { ...SETTINGS_DEFAULTS, ...JSON.parse(raw) };
+  } catch {}
+}
+
+function saveSettings() {
+  localStorage.setItem("cupcake_settings", JSON.stringify(SETTINGS));
+}
+
+function applySettings() {
+  const r = document.documentElement.style;
+  r.setProperty("--accent", SETTINGS.accentColor);
+  r.setProperty("--accent2", SETTINGS.accent2Color);
+  r.setProperty("--bg", SETTINGS.bgColor);
+  r.setProperty("--s1", SETTINGS.s1Color);
+  r.setProperty("--s2", SETTINGS.s2Color);
+  r.setProperty("--s3", SETTINGS.s3Color);
+  r.setProperty("--b1", SETTINGS.b1Color);
+  r.setProperty("--b2", SETTINGS.b2Color);
+  r.setProperty("--cream", SETTINGS.creamColor);
+  r.setProperty("--cream2", SETTINGS.cream2Color);
+  r.setProperty("--cream3", SETTINGS.cream3Color);
+  r.setProperty("--col-val", SETTINGS.colVal);
+  r.setProperty("--col-math", SETTINGS.colMath);
+  r.setProperty("--col-var", SETTINGS.colVar);
+  r.setProperty("--col-logic", SETTINGS.colLogic);
+  r.setProperty("--col-flow", SETTINGS.colFlow);
+  r.setProperty("--col-fn", SETTINGS.colFn);
+  r.setProperty("--col-out", SETTINGS.colOut);
+  r.setProperty("--col-string", SETTINGS.colString);
+  r.setProperty("--col-array", SETTINGS.colArray);
+  r.setProperty("--col-obj", SETTINGS.colObj);
+  r.setProperty("--col-conv", SETTINGS.colConv);
+  r.setProperty("--col-async", SETTINGS.colAsync);
+  r.setProperty("--col-dom", SETTINGS.colDom);
+  r.setProperty("--col-date", SETTINGS.colDate);
+
+  const sidebar = document.getElementById("sidebar");
+  const consolePanel = document.getElementById("console-panel");
+  const toolbar = document.getElementById("toolbar");
+  const catCorner = document.getElementById("cat-corner");
+
+  if (sidebar) {
+    sidebar.style.background = hexToRgba(SETTINGS.s1Color, SETTINGS.sidebarOpacity);
+    sidebar.style.backdropFilter = SETTINGS.sidebarBlur > 0 ? `blur(${SETTINGS.sidebarBlur}px)` : "";
+  }
+  if (consolePanel) {
+    consolePanel.style.background = hexToRgba("#080808", SETTINGS.consoleOpacity);
+    consolePanel.style.backdropFilter = SETTINGS.consoleBlur > 0 ? `blur(${SETTINGS.consoleBlur}px)` : "";
+  }
+  if (catCorner) {
+    catCorner.style.background = hexToRgba(SETTINGS.s1Color, SETTINGS.sidebarOpacity);
+  }
+  if (toolbar) {
+    toolbar.style.background = hexToRgba(SETTINGS.s1Color, SETTINGS.toolbarOpacity);
+    toolbar.style.backdropFilter = SETTINGS.toolbarBlur > 0 ? `blur(${SETTINGS.toolbarBlur}px)` : "";
+  }
+
+  document.querySelectorAll(".node").forEach(el => {
+    el.style.opacity = SETTINGS.nodeOpacity;
+    el.style.backdropFilter = SETTINGS.nodeBlur > 0 ? `blur(${SETTINGS.nodeBlur}px)` : "";
+    el.style.borderRadius = SETTINGS.nodeBorderRadius + "px";
+  });
+  document.querySelectorAll(".node-head").forEach(el => {
+    el.style.borderRadius = (SETTINGS.nodeHeadRadius) + "px " + (SETTINGS.nodeHeadRadius) + "px 0 0";
+  });
+
+  document.querySelectorAll(".wire:not(.temp)").forEach(el => {
+    el.style.strokeWidth = SETTINGS.wireWidth;
+    el.style.opacity = SETTINGS.wireOpacity;
+  });
+
+  document.querySelectorAll(".wire-badge").forEach(el => {
+    el.style.display = SETTINGS.showWireBadges ? "" : "none";
+  });
+
+  applyGridStyle();
+
+  document.body.style.fontSize = SETTINGS.uiFontSize + "px";
+
+  const cursorH = document.getElementById("cursor-h");
+  const cursorV = document.getElementById("cursor-v");
+  if (cursorH) cursorH.style.setProperty("--cursor-color", SETTINGS.cursorColor);
+  if (cursorV) cursorV.style.setProperty("--cursor-color", SETTINGS.cursorColor);
+  r.setProperty("--cursor-accent", SETTINGS.cursorColor);
+
+  const catEl = document.getElementById("cat-ascii");
+  if (catEl) catEl.style.display = SETTINGS.catAnimation ? "" : "none";
+
+  saveSettings();
+}
+
+function applyGridStyle() {
+  const grid = document.getElementById("grid-bg");
+  if (!grid) return;
+  const size = SETTINGS.gridSize;
+  const op = SETTINGS.gridOpacity;
+  const col = `rgba(37,37,37,${op})`;
+  if (SETTINGS.gridStyle === "none") {
+    grid.style.backgroundImage = "none";
+  } else if (SETTINGS.gridStyle === "lines") {
+    grid.style.backgroundImage = `linear-gradient(${col} 1px, transparent 1px), linear-gradient(90deg, ${col} 1px, transparent 1px)`;
+    grid.style.backgroundSize = `${size * zoom}px ${size * zoom}px`;
+  } else {
+    grid.style.backgroundImage = `radial-gradient(circle, ${col} 1px, transparent 1px)`;
+    grid.style.backgroundSize = `${size * zoom}px ${size * zoom}px`;
+  }
+}
+
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function snapToGrid(val) {
+  if (!SETTINGS.snapToGrid) return val;
+  return Math.round(val / SETTINGS.snapSize) * SETTINGS.snapSize;
+}
+
+function buildSettingsModal() {
+  const existing = document.getElementById("settings-modal");
+  if (existing) { existing.remove(); return; }
+
+  const overlay = document.createElement("div");
+  overlay.className = "overlay open";
+  overlay.id = "settings-modal";
+
+  const modal = document.createElement("div");
+  modal.className = "modal";
+  modal.style.cssText = "width:680px;max-height:85vh;";
+
+  modal.innerHTML = `
+    <div class="mtop">
+      <span class="mtitle">settings</span>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="btn" id="settings-export-btn">export</button>
+        <button class="btn" id="settings-import-btn">import</button>
+        <button class="btn" id="settings-reset-btn">reset all</button>
+        <button class="mclose" id="settings-close">✕</button>
+      </div>
+    </div>
+    <div class="mbody" style="padding:0;display:flex;height:calc(85vh - 52px)">
+      <div class="settings-tabs" id="settings-tabs"></div>
+      <div class="settings-panes" id="settings-panes"></div>
+    </div>
+  `;
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  const sections = [
+    {
+      id: "colors", label: "colors", rows: [
+        { type: "section", label: "ui colors" },
+        { type: "color", label: "accent", key: "accentColor" },
+        { type: "color", label: "accent dim", key: "accent2Color" },
+        { type: "color", label: "background", key: "bgColor" },
+        { type: "color", label: "surface 1", key: "s1Color" },
+        { type: "color", label: "surface 2", key: "s2Color" },
+        { type: "color", label: "surface 3", key: "s3Color" },
+        { type: "color", label: "border 1", key: "b1Color" },
+        { type: "color", label: "border 2", key: "b2Color" },
+        { type: "color", label: "text", key: "creamColor" },
+        { type: "color", label: "text dim", key: "cream2Color" },
+        { type: "color", label: "text muted", key: "cream3Color" },
+        { type: "section", label: "node category colors" },
+        { type: "color", label: "values", key: "colVal" },
+        { type: "color", label: "math", key: "colMath" },
+        { type: "color", label: "variables", key: "colVar" },
+        { type: "color", label: "logic", key: "colLogic" },
+        { type: "color", label: "control flow", key: "colFlow" },
+        { type: "color", label: "functions", key: "colFn" },
+        { type: "color", label: "output", key: "colOut" },
+        { type: "color", label: "strings", key: "colString" },
+        { type: "color", label: "arrays", key: "colArray" },
+        { type: "color", label: "objects", key: "colObj" },
+        { type: "color", label: "convert", key: "colConv" },
+        { type: "color", label: "async", key: "colAsync" },
+        { type: "color", label: "dom", key: "colDom" },
+        { type: "color", label: "date", key: "colDate" },
+      ]
+    },
+    {
+      id: "canvas", label: "canvas", rows: [
+        { type: "section", label: "grid" },
+        { type: "select", label: "grid style", key: "gridStyle", opts: ["dots", "lines", "none"] },
+        { type: "range", label: "grid size", key: "gridSize", min: 8, max: 64, step: 4 },
+        { type: "range", label: "grid opacity", key: "gridOpacity", min: 0, max: 1, step: 0.05 },
+        { type: "section", label: "snapping" },
+        { type: "toggle", label: "snap to grid", key: "snapToGrid" },
+        { type: "range", label: "snap size", key: "snapSize", min: 4, max: 80, step: 4 },
+      ]
+    },
+    {
+      id: "panels", label: "panels", rows: [
+        { type: "section", label: "sidebar" },
+        { type: "range", label: "opacity", key: "sidebarOpacity", min: 0, max: 1, step: 0.05 },
+        { type: "range", label: "blur", key: "sidebarBlur", min: 0, max: 24, step: 1 },
+        { type: "section", label: "toolbar" },
+        { type: "range", label: "opacity", key: "toolbarOpacity", min: 0, max: 1, step: 0.05 },
+        { type: "range", label: "blur", key: "toolbarBlur", min: 0, max: 24, step: 1 },
+        { type: "section", label: "console" },
+        { type: "range", label: "opacity", key: "consoleOpacity", min: 0, max: 1, step: 0.05 },
+        { type: "range", label: "blur", key: "consoleBlur", min: 0, max: 24, step: 1 },
+      ]
+    },
+    {
+      id: "nodes", label: "nodes", rows: [
+        { type: "section", label: "appearance" },
+        { type: "range", label: "opacity", key: "nodeOpacity", min: 0.1, max: 1, step: 0.05 },
+        { type: "range", label: "blur", key: "nodeBlur", min: 0, max: 16, step: 1 },
+        { type: "range", label: "border radius", key: "nodeBorderRadius", min: 0, max: 24, step: 1 },
+        { type: "section", label: "wires" },
+        { type: "select", label: "wire style", key: "wireStyle", opts: ["bezier", "straight"] },
+        { type: "range", label: "wire width", key: "wireWidth", min: 0.5, max: 6, step: 0.5 },
+        { type: "range", label: "wire opacity", key: "wireOpacity", min: 0.1, max: 1, step: 0.05 },
+        { type: "toggle", label: "show wire labels", key: "showWireBadges" },
+      ]
+    },
+    {
+      id: "editor", label: "editor", rows: [
+        { type: "section", label: "ui" },
+        { type: "range", label: "font size", key: "uiFontSize", min: 10, max: 18, step: 1 },
+        { type: "section", label: "behavior" },
+        { type: "toggle", label: "compile animation delay", key: "compileDelay" },
+        { type: "toggle", label: "node spawn animation", key: "spawnAnimation" },
+        { type: "section", label: "cursor" },
+        { type: "color", label: "cursor color", key: "cursorColor" },
+        { type: "range", label: "cursor scale", key: "cursorSize", min: 0.5, max: 2, step: 0.1 },
+        { type: "section", label: "cat" },
+        { type: "toggle", label: "cat animation", key: "catAnimation" },
+      ]
+    },
+  ];
+
+  const tabsEl = modal.querySelector("#settings-tabs");
+  const panesEl = modal.querySelector("#settings-panes");
+  let activeSection = sections[0].id;
+
+  sections.forEach((sec, si) => {
+    const tab = document.createElement("div");
+    tab.className = "settings-tab" + (si === 0 ? " active" : "");
+    tab.textContent = sec.label;
+    tab.dataset.id = sec.id;
+    tab.addEventListener("click", () => {
+      activeSection = sec.id;
+      tabsEl.querySelectorAll(".settings-tab").forEach(t => t.classList.toggle("active", t.dataset.id === sec.id));
+      panesEl.querySelectorAll(".settings-pane").forEach(p => p.classList.toggle("active", p.dataset.id === sec.id));
+    });
+    tabsEl.appendChild(tab);
+
+    const pane = document.createElement("div");
+    pane.className = "settings-pane" + (si === 0 ? " active" : "");
+    pane.dataset.id = sec.id;
+
+    sec.rows.forEach(row => {
+      if (row.type === "section") {
+        const s = document.createElement("div");
+        s.className = "settings-section-label";
+        s.textContent = row.label;
+        pane.appendChild(s);
+        return;
+      }
+
+      const wrap = document.createElement("div");
+      wrap.className = "settings-row";
+
+      const lbl = document.createElement("span");
+      lbl.className = "settings-row-label";
+      lbl.textContent = row.label;
+      wrap.appendChild(lbl);
+
+      const right = document.createElement("div");
+      right.className = "settings-row-right";
+
+      if (row.type === "color") {
+        const inp = document.createElement("input");
+        inp.type = "color";
+        inp.className = "settings-color";
+        inp.value = SETTINGS[row.key];
+        inp.addEventListener("input", () => {
+          SETTINGS[row.key] = inp.value;
+          applySettings();
+        });
+        right.appendChild(inp);
+      }
+
+      if (row.type === "range") {
+        const val = document.createElement("span");
+        val.className = "settings-range-val";
+        val.textContent = SETTINGS[row.key];
+
+        const inp = document.createElement("input");
+        inp.type = "range";
+        inp.className = "settings-range";
+        inp.min = row.min;
+        inp.max = row.max;
+        inp.step = row.step;
+        inp.value = SETTINGS[row.key];
+        inp.addEventListener("input", () => {
+          const v = parseFloat(inp.value);
+          SETTINGS[row.key] = v;
+          val.textContent = v;
+          applySettings();
+        });
+        inp.addEventListener("mousedown", e => e.stopPropagation());
+        right.appendChild(val);
+        right.appendChild(inp);
+      }
+
+      if (row.type === "toggle") {
+        const btn = document.createElement("button");
+        btn.className = "settings-toggle" + (SETTINGS[row.key] ? " on" : "");
+        btn.textContent = SETTINGS[row.key] ? "on" : "off";
+        btn.addEventListener("click", () => {
+          SETTINGS[row.key] = !SETTINGS[row.key];
+          btn.classList.toggle("on", SETTINGS[row.key]);
+          btn.textContent = SETTINGS[row.key] ? "on" : "off";
+          applySettings();
+        });
+        right.appendChild(btn);
+      }
+
+      if (row.type === "select") {
+        const sel = document.createElement("select");
+        sel.className = "nfsel";
+        sel.style.cssText = "width:100px;font-size:10px;padding:3px 6px;";
+        row.opts.forEach(o => {
+          const opt = document.createElement("option");
+          opt.value = o;
+          opt.textContent = o;
+          if (SETTINGS[row.key] === o) opt.selected = true;
+          sel.appendChild(opt);
+        });
+        sel.addEventListener("change", () => {
+          SETTINGS[row.key] = sel.value;
+          applySettings();
+        });
+        sel.addEventListener("mousedown", e => e.stopPropagation());
+        right.appendChild(sel);
+      }
+
+      wrap.appendChild(right);
+      pane.appendChild(wrap);
+    });
+
+    panesEl.appendChild(pane);
+  });
+
+  modal.querySelector("#settings-close").addEventListener("click", () => overlay.remove());
+  overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
+
+  modal.querySelector("#settings-reset-btn").addEventListener("click", () => {
+    if (!confirm("reset all settings to defaults?")) return;
+    SETTINGS = { ...SETTINGS_DEFAULTS };
+    applySettings();
+    overlay.remove();
+    buildSettingsModal();
+    toast("settings reset");
+  });
+
+  modal.querySelector("#settings-export-btn").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(SETTINGS, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "cupcake-settings.json";
+    a.click();
+    URL.revokeObjectURL(url);
+    toast("settings exported");
+  });
+
+  modal.querySelector("#settings-import-btn").addEventListener("click", () => {
+    const inp = document.createElement("input");
+    inp.type = "file";
+    inp.accept = ".json";
+    inp.addEventListener("change", () => {
+      const file = inp.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const imported = JSON.parse(e.target.result);
+          SETTINGS = { ...SETTINGS_DEFAULTS, ...imported };
+          applySettings();
+          overlay.remove();
+          buildSettingsModal();
+          toast("settings imported");
+        } catch {
+          toast("invalid settings file");
+        }
+      };
+      reader.readAsText(file);
+    });
+    inp.click();
+  });
+}
+
 async function boot() {
   startLoader();
   buildSidebar();
   buildSaveLoad();
+  loadSettings();
+  applySettings();
   loadPanelSizes();
   await initDB();
   await refreshIndicators();
@@ -3472,6 +3932,8 @@ document.getElementById("import-modal-close").addEventListener("click", () => {
 document.getElementById("import-cancel-btn").addEventListener("click", () => {
   document.getElementById("import-modal").classList.remove("open");
 });
+
+document.getElementById("settings-btn").addEventListener("click", buildSettingsModal);
 
 document.getElementById("embed-btn").addEventListener("click", () => {
   const payload = btoa(JSON.stringify({ nodes, conns, frames }));

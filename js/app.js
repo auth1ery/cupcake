@@ -2878,7 +2878,6 @@ document.addEventListener("mouseup", (e) => {
     if (w > 40 && h > 30) makeFrame(x, y, w, h);
     return;
   }
-
   dragFrame = null;
   dragFrameNodeOrigins = null;
   resizeFrame = null;
@@ -2888,12 +2887,8 @@ document.addEventListener("mouseup", (e) => {
     panning = false;
     canvasWrap.style.cursor = "default";
   }
-  const wasResizing = resizing || sideResizing;
-  resizing = false;
-  sideResizing = false;
-  if (wasResizing) savePanelSizes();
 });
-                          
+
 canvasWrap.addEventListener(
   "wheel",
   (e) => {
@@ -2939,44 +2934,19 @@ document.addEventListener("keydown", (e) => {
     }
   }
   if ((e.metaKey || e.ctrlKey) && !typing) {
-    if (e.key === "z" && !e.shiftKey) {
-      e.preventDefault();
-      undo();
-    }
-    if (e.key === "z" && e.shiftKey) {
-      e.preventDefault();
-      redo();
-    }
-    if (e.key === "y") {
-      e.preventDefault();
-      redo();
-    }
-    if (e.key === "c") {
-      e.preventDefault();
-      copySelected();
-    }
-    if (e.key === "v") {
-      e.preventDefault();
-      pasteSelected();
-    }
+    if (e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+    if (e.key === "z" && e.shiftKey) { e.preventDefault(); redo(); }
+    if (e.key === "y") { e.preventDefault(); redo(); }
+    if (e.key === "c") { e.preventDefault(); copySelected(); }
+    if (e.key === "v") { e.preventDefault(); pasteSelected(); }
     if (e.key === "a") {
       e.preventDefault();
       multiSel.clear();
       Object.keys(nodes).forEach((id) => multiSel.add(id));
       refreshMultiSel();
     }
-    if (e.key === "f") {
-      e.preventDefault();
-      toggleSearch();
-    }
-    if (e.key === "f") {
-      e.preventDefault();
-      toggleFind();
-    }
-    if (e.key === "b") {
-      e.preventDefault();
-      toggleSearch();
-    }
+    if (e.key === "f") { e.preventDefault(); toggleFind(); }
+    if (e.key === "b") { e.preventDefault(); toggleSearch(); }
     if (e.key === "?") toggleShortcuts();
   }
 });
@@ -3348,6 +3318,7 @@ async function boot() {
   document.getElementById("canvas-wrap").classList.add("console-open");
   document.getElementById("sidebar").classList.add("console-open");
   document.getElementById("cat-corner").classList.add("open");
+  syncMinimapBottom();
 }
 
 document.getElementById("import-btn").addEventListener("click", () => {
@@ -4012,10 +3983,6 @@ function runCode() {
   output.innerHTML = "";
   document.getElementById("run-header-label").textContent = "running...";
   document.getElementById("run-dot").classList.remove("err");
-  panel.classList.add("open");
-  document.getElementById("canvas-wrap").classList.add("console-open");
-  document.getElementById("sidebar").classList.add("console-open");
-
   let code;
   try {
     code = compileCode();
@@ -4023,24 +3990,16 @@ function runCode() {
     appendConsoleEntry(output, "error", ["compile error: " + e.message], 0);
     return;
   }
-
   const start = performance.now();
-  const entries = [];
-
   const _log = console.log;
   const _error = console.error;
   const _warn = console.warn;
   const _info = console.info;
   const _alert = window.alert;
-
-  const cap =
-    (level) =>
-    (...args) => {
-      const ms = Math.round(performance.now() - start);
-      appendConsoleEntry(output, level, args, ms);
-      entries.push({ level, args });
-    };
-
+  const cap = (level) => (...args) => {
+    const ms = Math.round(performance.now() - start);
+    appendConsoleEntry(output, level, args, ms);
+  };
   console.log = cap("log");
   console.error = cap("error");
   console.warn = cap("warn");
@@ -4049,7 +4008,6 @@ function runCode() {
     const ms = Math.round(performance.now() - start);
     appendConsoleEntry(output, "log", ["[alert] " + String(msg)], ms);
   };
-
   let hadError = false;
   try {
     const fn = new Function(code);
@@ -4099,11 +4057,6 @@ function finishRun(output, hadError, start) {
 document.getElementById("run-btn").addEventListener("click", runCode);
 document.getElementById("run-clear-btn").addEventListener("click", () => {
   document.getElementById("run-output").innerHTML = "";
-});
-document.getElementById("console-close-btn").addEventListener("click", () => {
-  document.getElementById("console-panel").classList.remove("open");
-  document.getElementById("canvas-wrap").classList.remove("console-open");
-  document.getElementById("sidebar").classList.remove("console-open");
 });
 
 function startLoader() {
@@ -4267,13 +4220,10 @@ document.addEventListener("contextmenu", (e) => {
 
 const consolePanel = document.getElementById("console-panel");
 const resizeHandle = document.createElement("div");
-resizeHandle.style.cssText =
-  "position:absolute;top:-4px;left:0;right:0;height:8px;cursor:ns-resize;z-index:200;";
+resizeHandle.style.cssText = "position:absolute;top:-4px;left:0;right:0;height:8px;cursor:ns-resize;z-index:200;";
 consolePanel.appendChild(resizeHandle);
 
-let resizing = false,
-  resizeStartY = 0,
-  resizeStartH = 0;
+let resizing = false, resizeStartY = 0, resizeStartH = 0;
 
 resizeHandle.addEventListener("mousedown", (e) => {
   resizing = true;
@@ -4285,29 +4235,25 @@ resizeHandle.addEventListener("mousedown", (e) => {
 document.addEventListener("mousemove", (e) => {
   if (!resizing) return;
   const delta = resizeStartY - e.clientY;
-  const newH = Math.max(
-    80,
-    Math.min(window.innerHeight - 100, resizeStartH + delta),
-  );
+  const newH = Math.max(80, Math.min(window.innerHeight - 100, resizeStartH + delta));
   consolePanel.style.height = newH + "px";
   document.getElementById("canvas-wrap").style.bottom = newH + "px";
   document.getElementById("sidebar").style.bottom = newH + "px";
   document.getElementById("cat-corner").style.height = newH + "px";
+  syncMinimapBottom();
 });
 
 document.addEventListener("mouseup", () => {
+  if (resizing) savePanelSizes();
   resizing = false;
 });
 
 const sidebar = document.getElementById("sidebar");
 const sideResizeHandle = document.createElement("div");
-sideResizeHandle.style.cssText =
-  "position:absolute;top:0;right:-4px;bottom:0;width:8px;cursor:ew-resize;z-index:200;";
+sideResizeHandle.style.cssText = "position:absolute;top:0;right:-4px;bottom:0;width:8px;cursor:ew-resize;z-index:200;";
 sidebar.appendChild(sideResizeHandle);
 
-let sideResizing = false,
-  sideStartX = 0,
-  sideStartW = 0;
+let sideResizing = false, sideStartX = 0, sideStartW = 0;
 
 sideResizeHandle.addEventListener("mousedown", (e) => {
   sideResizing = true;
@@ -4318,18 +4264,17 @@ sideResizeHandle.addEventListener("mousedown", (e) => {
 
 document.addEventListener("mousemove", (e) => {
   if (!sideResizing) return;
-  const newW = Math.max(
-    140,
-    Math.min(400, sideStartW + e.clientX - sideStartX),
-  );
+  const newW = Math.max(140, Math.min(400, sideStartW + e.clientX - sideStartX));
   sidebar.style.width = newW + "px";
   document.getElementById("canvas-wrap").style.left = newW + "px";
   document.getElementById("console-panel").style.left = newW + "px";
   document.getElementById("cat-corner").style.width = newW + "px";
   document.getElementById("hint").style.left = `calc(50% + ${newW / 2}px)`;
+  document.getElementById("minimap").style.right = "0px";
 });
 
 document.addEventListener("mouseup", () => {
+  if (sideResizing) savePanelSizes();
   sideResizing = false;
 });
 
@@ -4368,21 +4313,24 @@ const ease = 0.16;
 document.addEventListener("mousemove", (e) => {
   mouseX = e.clientX;
   mouseY = e.clientY;
-
   curDot.style.left = mouseX + "px";
   curDot.style.top = mouseY + "px";
-
   const el = document.elementFromPoint(e.clientX, e.clientY);
   cur.className = "";
-
   if (!el) return;
-
   const computed = window.getComputedStyle(el).cursor;
-
   if (el.classList.contains("port")) {
     cur.classList.add("state-crosshair");
   } else if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable) {
     cur.classList.add("state-text");
+  } else if (el.classList.contains("frame-resize")) {
+    cur.classList.add("state-se");
+  } else if (computed === "ns-resize") {
+    cur.classList.add("state-ns");
+  } else if (computed === "ew-resize") {
+    cur.classList.add("state-ew");
+  } else if (computed === "se-resize") {
+    cur.classList.add("state-se");
   } else if (
     el.tagName === "BUTTON" ||
     el.tagName === "SELECT" ||
@@ -4391,15 +4339,12 @@ document.addEventListener("mousemove", (e) => {
     el.classList.contains("dd-row") ||
     el.classList.contains("search-row") ||
     el.classList.contains("nclose") ||
-    el.classList.contains("wire")
+    el.classList.contains("wire") ||
+    el.classList.contains("frame-delete")
   ) {
     cur.classList.add("state-pointer");
   } else if (el.classList.contains("node-head") || computed === "grab" || computed === "grabbing") {
     cur.classList.add("state-grab");
-  } else if (computed === "ns-resize") {
-    cur.classList.add("state-ns");
-  } else if (computed === "ew-resize") {
-    cur.classList.add("state-ew");
   }
 });
 
@@ -4574,7 +4519,9 @@ function drawMinimap() {
   const canvas = document.getElementById("minimap-canvas");
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
-  const W = canvas.width, H = canvas.height;
+  const W = 140, H = 90;
+  canvas.width = W;
+  canvas.height = H;
   ctx.clearRect(0, 0, W, H);
   const nodeVals = Object.values(nodes);
   if (!nodeVals.length) return;
@@ -4590,7 +4537,7 @@ function drawMinimap() {
     ctx.globalAlpha = 0.75;
     ctx.fillStyle = def?.col || "#303030";
     const x = n.x * scale + offX, y = n.y * scale + offY;
-    const w = Math.max(5, 170 * scale), h = Math.max(3, 56 * scale);
+    const w = Math.max(4, 170 * scale), h = Math.max(2, 56 * scale);
     ctx.beginPath();
     ctx.roundRect(x, y, w, h, 2);
     ctx.fill();
@@ -4613,7 +4560,9 @@ function syncMinimapBottom() {
   const mm = document.getElementById("minimap");
   if (!mm) return;
   const panel = document.getElementById("console-panel");
-  mm.style.bottom = panel.classList.contains("open") ? panel.offsetHeight + "px" : "0";
+  const isOpen = panel.classList.contains("open");
+  const consoleH = isOpen ? panel.offsetHeight : 0;
+  mm.style.bottom = (consoleH + 8) + "px";
 }
 
 document.getElementById("minimap-canvas").addEventListener("click", e => {

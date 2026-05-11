@@ -278,36 +278,75 @@ body {
   overflow: visible;
 }
 
-.wire {
-  fill: none;
-  stroke: var(--b2);
-  stroke-width: 2;
-  stroke-linecap: round;
-  pointer-events: stroke;
-  cursor: pointer;
-}
-.wire:hover {
-  stroke: var(--col-flow) !important;
-  stroke-width: 2.5;
-}
-.wire.temp {
-  stroke: var(--accent);
-  stroke-dasharray: 7 4;
-  pointer-events: none;
-}
-
 .node {
   position: absolute;
   min-width: 165px;
   background: var(--s1);
   border: 1px solid var(--b1);
-  border-radius: 12px;
+  border-radius: var(--settings-node-radius, 12px);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
-  transition:
-    border-color 0.12s,
-    box-shadow 0.12s;
+  transition: border-color 0.12s, box-shadow 0.12s;
   z-index: 10;
+  opacity: var(--settings-node-opacity, 1);
+  backdrop-filter: var(--settings-node-blur, none);
 }
+.node:hover {
+  border-color: var(--b2);
+}
+.node.sel {
+  border-color: var(--accent2);
+  box-shadow: 0 0 0 2px rgba(212, 184, 122, 0.14), 0 6px 28px rgba(0, 0, 0, 0.5);
+}
+.node.multi-sel {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(212, 184, 122, 0.22), 0 6px 28px rgba(0, 0, 0, 0.5);
+}
+
+.node-head {
+  padding: 6px 9px;
+  background: var(--s2);
+  border-bottom: 1px solid var(--b1);
+  border-radius: var(--settings-node-head-radius, 11px) var(--settings-node-head-radius, 11px) 0 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: grab;
+}
+.node-head:active {
+  cursor: grabbing;
+}
+
+.wire {
+  fill: none;
+  stroke: var(--b2);
+  stroke-width: var(--settings-wire-width, 2);
+  stroke-linecap: round;
+  pointer-events: stroke;
+  cursor: pointer;
+  opacity: var(--settings-wire-opacity, 1);
+}
+.wire:hover {
+  stroke: var(--col-flow) !important;
+  stroke-width: calc(var(--settings-wire-width, 2) + 0.5);
+}
+.wire.temp {
+  stroke: var(--accent);
+  stroke-dasharray: 7 4;
+  pointer-events: none;
+  opacity: 1;
+}
+
+.wire-badge {
+  pointer-events: none;
+  display: var(--settings-wire-badges-display, inline);
+}
+
+.wire:hover {
+  stroke: var(--col-flow) !important;
+  stroke-width: 2.5;
+}
+
+
 .node:hover {
   border-color: var(--b2);
 }
@@ -318,16 +357,6 @@ body {
     0 6px 28px rgba(0, 0, 0, 0.5);
 }
 
-.node-head {
-  padding: 6px 9px;
-  background: var(--s2);
-  border-bottom: 1px solid var(--b1);
-  border-radius: 11px 11px 0 0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: grab;
-}
 .node-head:active {
   cursor: grabbing;
 }
@@ -1098,10 +1127,6 @@ body {
   color: var(--cream3);
 }
 
-.wire-badge {
-  pointer-events: none;
-}
-
 #sidebar-panes {
   flex: 1;
   overflow: hidden;
@@ -1144,7 +1169,7 @@ input, select, textarea, button, a {
 #cursor-h,
 #cursor-v {
   position: absolute;
-  background: var(--accent);
+  background: var(--settings-cursor-color, var(--accent));
   border-radius: 1px;
   top: 50%;
   left: 50%;
@@ -1152,39 +1177,39 @@ input, select, textarea, button, a {
 }
 
 #cursor-h {
-  width: 12px;
-  height: 2px;
+  width: calc(12px * var(--settings-cursor-scale, 1));
+  height: calc(2px * var(--settings-cursor-scale, 1));
   transform: translate(-50%, -50%);
 }
 #cursor-v {
-  width: 2px;
-  height: 12px;
+  width: calc(2px * var(--settings-cursor-scale, 1));
+  height: calc(12px * var(--settings-cursor-scale, 1));
   transform: translate(-50%, -50%);
 }
 
-#cursor.state-text #cursor-h { width: 2px; height: 18px; transform: translate(-50%, -50%); }
+#cursor.state-text #cursor-h { width: calc(2px * var(--settings-cursor-scale, 1)); height: calc(18px * var(--settings-cursor-scale, 1)); transform: translate(-50%, -50%); }
 #cursor.state-text #cursor-v { opacity: 0; transform: translate(-50%, -50%); }
 
-#cursor.state-pointer #cursor-h { width: 7px; height: 7px; border-radius: 50%; transform: translate(-50%, -50%); }
+#cursor.state-pointer #cursor-h { width: calc(7px * var(--settings-cursor-scale, 1)); height: calc(7px * var(--settings-cursor-scale, 1)); border-radius: 50%; transform: translate(-50%, -50%); }
 #cursor.state-pointer #cursor-v { opacity: 0; transform: translate(-50%, -50%); }
 
-#cursor.state-grab #cursor-h { width: 14px; height: 2px; background: var(--cream2); transform: translate(-50%, -50%); }
-#cursor.state-grab #cursor-v { width: 2px; height: 14px; background: var(--cream2); transform: translate(-50%, -50%); }
+#cursor.state-grab #cursor-h { width: calc(14px * var(--settings-cursor-scale, 1)); height: calc(2px * var(--settings-cursor-scale, 1)); background: var(--cream2); transform: translate(-50%, -50%); }
+#cursor.state-grab #cursor-v { width: calc(2px * var(--settings-cursor-scale, 1)); height: calc(14px * var(--settings-cursor-scale, 1)); background: var(--cream2); transform: translate(-50%, -50%); }
 
-#cursor.state-crosshair #cursor-h { width: 18px; height: 1px; background: var(--accent2); transform: translate(-50%, -50%); }
-#cursor.state-crosshair #cursor-v { width: 1px; height: 18px; background: var(--accent2); transform: translate(-50%, -50%); }
+#cursor.state-crosshair #cursor-h { width: calc(18px * var(--settings-cursor-scale, 1)); height: calc(1px * var(--settings-cursor-scale, 1)); background: var(--accent2); transform: translate(-50%, -50%); }
+#cursor.state-crosshair #cursor-v { width: calc(1px * var(--settings-cursor-scale, 1)); height: calc(18px * var(--settings-cursor-scale, 1)); background: var(--accent2); transform: translate(-50%, -50%); }
 
-#cursor.state-ns #cursor-h { width: 2px; height: 18px; transform: translate(-50%, -50%); }
+#cursor.state-ns #cursor-h { width: calc(2px * var(--settings-cursor-scale, 1)); height: calc(18px * var(--settings-cursor-scale, 1)); transform: translate(-50%, -50%); }
 #cursor.state-ns #cursor-v { opacity: 0; transform: translate(-50%, -50%); }
 
-#cursor.state-ew #cursor-h { width: 18px; height: 2px; transform: translate(-50%, -50%); }
+#cursor.state-ew #cursor-h { width: calc(18px * var(--settings-cursor-scale, 1)); height: calc(2px * var(--settings-cursor-scale, 1)); transform: translate(-50%, -50%); }
 #cursor.state-ew #cursor-v { opacity: 0; transform: translate(-50%, -50%); }
 
-#cursor.state-se #cursor-h { width: 18px; height: 2px; transform: translate(-50%, -50%) rotate(-45deg); }
-#cursor.state-se #cursor-v { width: 2px; height: 18px; transform: translate(-50%, -50%) rotate(-45deg); opacity: 1; }
+#cursor.state-se #cursor-h { width: calc(18px * var(--settings-cursor-scale, 1)); height: calc(2px * var(--settings-cursor-scale, 1)); transform: translate(-50%, -50%) rotate(-45deg); }
+#cursor.state-se #cursor-v { width: calc(2px * var(--settings-cursor-scale, 1)); height: calc(18px * var(--settings-cursor-scale, 1)); transform: translate(-50%, -50%) rotate(-45deg); opacity: 1; }
 
-#cursor.big #cursor-h { width: 20px; height: 2px; transform: translate(-50%, -50%); }
-#cursor.big #cursor-v { width: 2px; height: 20px; transform: translate(-50%, -50%); }
+#cursor.big #cursor-h { width: calc(20px * var(--settings-cursor-scale, 1)); height: calc(2px * var(--settings-cursor-scale, 1)); transform: translate(-50%, -50%); }
+#cursor.big #cursor-v { width: calc(2px * var(--settings-cursor-scale, 1)); height: calc(20px * var(--settings-cursor-scale, 1)); transform: translate(-50%, -50%); }
 
 .frame {
   position: absolute;

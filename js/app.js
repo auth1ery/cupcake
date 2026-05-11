@@ -4323,14 +4323,12 @@ document.addEventListener("mousemove", (e) => {
     cur.classList.add("state-crosshair");
   } else if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable) {
     cur.classList.add("state-text");
-  } else if (el.classList.contains("frame-resize")) {
+  } else if (el.classList.contains("frame-resize") || computed === "se-resize") {
     cur.classList.add("state-se");
   } else if (computed === "ns-resize") {
     cur.classList.add("state-ns");
   } else if (computed === "ew-resize") {
     cur.classList.add("state-ew");
-  } else if (computed === "se-resize") {
-    cur.classList.add("state-se");
   } else if (
     el.tagName === "BUTTON" ||
     el.tagName === "SELECT" ||

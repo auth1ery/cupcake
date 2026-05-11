@@ -4509,51 +4509,6 @@ document.addEventListener("mousemove", (e) => {
 document.addEventListener("mousedown", () => cur.classList.add("big"));
 document.addEventListener("mouseup", () => cur.classList.remove("big"));
 
-const CAT_FRAMES = [
-  (fly) =>
-    `  /\\_/\\  ${fly[0]}\n ( ·ω· ) ${fly[1]}\n  (づ づ)${fly[2]}\n   |  |  ${fly[3]}`,
-  (fly) =>
-    `  /\\_/\\  ${fly[0]}\n ( °ω°) ${fly[1]}\n  (づ づ)${fly[2]}\n   |  |  ${fly[3]}`,
-  (fly) =>
-    `  /\\_/\\  ${fly[0]}\n ( ·ω·)=${fly[1]}\n  (づ  )${fly[2]}\n   |  |  ${fly[3]}`,
-  (fly) =>
-    `   /\\_/\\ ${fly[0]}\n  (°ω° ) ${fly[1]}\n   (づ づ)${fly[2]}\n    |  | ${fly[3]}`,
-  (fly) =>
-    `  /\\_/\\  ${fly[0]}\n =(·ω· ) ${fly[1]}\n  (  づ)${fly[2]}\n   |  |  ${fly[3]}`,
-  (fly) =>
-    `  /\\_/\\  ${fly[0]}\n ( ·ω·)↑ ${fly[1]}\n  /|  |  ${fly[2]}\n / |  |  ${fly[3]}`,
-  (fly) =>
-    ` /\\_/\\   ${fly[0]}\n(·ω· )↑  ${fly[1]}\n |  |    ${fly[2]}\n |  |    ${fly[3]}`,
-  (fly) =>
-    `  /\\_/\\ ✦${fly[0]}\n (xωx )  ${fly[1]}\n  (づ づ)${fly[2]}\n   |  |  ${fly[3]}`,
-];
-
-const FLY_PATHS = [
-  ["✦", "  ", "  ", "  "],
-  ["  ", "✦ ", "  ", "  "],
-  ["  ", "  ", "✦ ", "  "],
-  ["  ", "  ", "  ", "✦ "],
-  ["  ", "  ", "✦ ", "  "],
-  ["  ", "✦ ", "  ", "  "],
-  ["✦ ", "  ", "  ", "  "],
-];
-
-let catFrame = 0;
-let flyFrame = 0;
-let catDir = 1;
-
-function tickCat() {
-  // :)
-  const el = document.getElementById("cat-ascii");
-  if (!el) return;
-  flyFrame = (flyFrame + 1) % FLY_PATHS.length;
-  catFrame = (catFrame + catDir + CAT_FRAMES.length) % CAT_FRAMES.length;
-  if (catFrame === CAT_FRAMES.length - 1 || catFrame === 0) catDir *= -1;
-  el.textContent = CAT_FRAMES[catFrame](FLY_PATHS[flyFrame]);
-}
-
-setInterval(tickCat, 320);
-
 let dragFrame = null, dragFrameStart = null, dragFrameOrigin = null, dragFrameNodeOrigins = null;
 let resizeFrame = null, resizeFrameStart = null, resizeFrameOrigin = null;
 
@@ -4873,6 +4828,77 @@ document.getElementById("find-input").addEventListener("keydown", e => {
   if (e.key === "Enter") { const first = document.querySelector("#find-results .search-row"); if (first) first.click(); }
 });
 
+const CAT_FRAMES = [ // meow <3
+  (fly) => `  /\\_/\\  ${fly[0]}\n ( ·ω· ) ${fly[1]}\n  (づ づ)${fly[2]}\n   |  |  ${fly[3]}`,
+  (fly) => `  /\\_/\\  ${fly[0]}\n ( °ω°) ${fly[1]}\n  (づ づ)${fly[2]}\n   |  |  ${fly[3]}`,
+  (fly) => `  /\\_/\\  ${fly[0]}\n ( ·ω·)=${fly[1]}\n  (づ  )${fly[2]}\n   |  |  ${fly[3]}`,
+  (fly) => `   /\\_/\\ ${fly[0]}\n  (°ω° ) ${fly[1]}\n   (づ づ)${fly[2]}\n    |  | ${fly[3]}`,
+  (fly) => `  /\\_/\\  ${fly[0]}\n =(·ω· ) ${fly[1]}\n  (  づ)${fly[2]}\n   |  |  ${fly[3]}`,
+  (fly) => `  /\\_/\\  ${fly[0]}\n ( ·ω·)↑ ${fly[1]}\n  /|  |  ${fly[2]}\n / |  |  ${fly[3]}`,
+  (fly) => ` /\\_/\\   ${fly[0]}\n(·ω· )↑  ${fly[1]}\n |  |    ${fly[2]}\n |  |    ${fly[3]}`,
+  (fly) => `  /\\_/\\ ✦${fly[0]}\n (xωx )  ${fly[1]}\n  (づ づ)${fly[2]}\n   |  |  ${fly[3]}`,
+];
+
+const SNEEZE_FRAMES = [
+  `  /\\_/\\  \n ( ·ω· ) \n  (づ づ)\n   |  |  `,
+  `  /\\_/\\  \n ( ·ω̃· ) \n  (づ づ)\n   |  |  `,
+  `  /\\_/\\  \n ( >ω< ) \n  (づ づ)\n   |  |  `,
+  `  /\\_/\\  \n ( >ω< ) \n  (づ づ)\n   |  |  `,
+  `  /\\_/\\  \n (っ`ω´)っ\n  ~~     \n   achoo!`,
+  `  /\\_/\\  \n (っ`ω´)っ\n  ~~~    \n  *achoo*`,
+  `  /\\_/\\  \n ( ᵒ̴̶̷ω̮ᵒ̴̶̷ )\n  (づ づ)\n   *snf* `,
+  `  /\\_/\\  \n ( ·ω· ) \n  (づ づ)\n   |  |  `,
+];
+
+const FLY_PATHS = [
+  ["✦", "  ", "  ", "  "],
+  ["  ", "✦ ", "  ", "  "],
+  ["  ", "  ", "✦ ", "  "],
+  ["  ", "  ", "  ", "✦ "],
+  ["  ", "  ", "✦ ", "  "],
+  ["  ", "✦ ", "  ", "  "],
+  ["✦ ", "  ", "  ", "  "],
+];
+
+let catFrame = 0;
+let flyFrame = 0;
+let catDir = 1;
+let sneezing = false;
+let sneezeFrame = 0;
+let sneezeTimeout = null;
+
+function scheduleSneeze() {
+  const delay = 18000 + Math.random() * 42000;
+  sneezeTimeout = setTimeout(() => {
+    sneezing = true;
+    sneezeFrame = 0;
+  }, delay);
+}
+
+function tickCat() {
+  const el = document.getElementById("cat-ascii");
+  if (!el) return;
+
+  if (sneezing) {
+    el.textContent = SNEEZE_FRAMES[sneezeFrame];
+    sneezeFrame++;
+    if (sneezeFrame >= SNEEZE_FRAMES.length) {
+      sneezing = false;
+      sneezeFrame = 0;
+      scheduleSneeze();
+    }
+    return;
+  }
+
+  flyFrame = (flyFrame + 1) % FLY_PATHS.length;
+  catFrame = (catFrame + catDir + CAT_FRAMES.length) % CAT_FRAMES.length;
+  if (catFrame === CAT_FRAMES.length - 1 || catFrame === 0) catDir *= -1;
+  el.textContent = CAT_FRAMES[catFrame](FLY_PATHS[flyFrame]);
+}
+
+setInterval(tickCat, 320);
+scheduleSneeze();
+    
 if (
   window.innerWidth < 768 ||
   /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)

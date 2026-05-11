@@ -1273,12 +1273,16 @@ input, select, textarea, button, a {
   height: 26px;
 }
 
+#cursor.state-se #cursor-h { width: 12px; height: 2px; transform: translate(-50%,-50%) rotate(45deg); }
+#cursor.state-se #cursor-v { width: 2px; height: 12px; transform: translate(-50%,-50%) rotate(45deg); }
+#cursor.state-nw #cursor-h { width: 12px; height: 2px; transform: translate(-50%,-50%) rotate(45deg); }
+#cursor.state-nw #cursor-v { width: 2px; height: 12px; transform: translate(-50%,-50%) rotate(45deg); }
+
 #minimap {
   position: fixed;
-  bottom: 0;
   right: 0;
-  width: 180px;
-  height: 120px;
+  width: 140px;
+  height: 90px;
   background: var(--s1);
   border-top: 1px solid var(--b1);
   border-left: 1px solid var(--b1);
@@ -1288,6 +1292,8 @@ input, select, textarea, button, a {
 }
 #minimap-canvas {
   display: block;
+  width: 140px;
+  height: 90px;
   cursor: crosshair;
 }
 

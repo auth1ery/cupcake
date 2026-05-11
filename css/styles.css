@@ -1273,23 +1273,23 @@ input, select, textarea, button, a {
   height: 26px;
 }
 
-#cursor.state-se #cursor-h { width: 12px; height: 2px; transform: translate(-50%,-50%) rotate(45deg); }
-#cursor.state-se #cursor-v { width: 2px; height: 12px; transform: translate(-50%,-50%) rotate(45deg); }
-#cursor.state-nw #cursor-h { width: 12px; height: 2px; transform: translate(-50%,-50%) rotate(45deg); }
-#cursor.state-nw #cursor-v { width: 2px; height: 12px; transform: translate(-50%,-50%) rotate(45deg); }
+#cursor.state-se #cursor-h { width: 16px; height: 2px; background: var(--accent); transform: translate(-50%,-50%) rotate(-45deg); }
+#cursor.state-se #cursor-v { width: 2px; height: 8px; background: var(--accent); transform: translate(-50%,-50%) rotate(-45deg); }
 
 #minimap {
   position: fixed;
-  right: 0;
+  right: 8px;
   width: 140px;
   height: 90px;
   background: var(--s1);
   border-top: 1px solid var(--b1);
   border-left: 1px solid var(--b1);
+  border-radius: 6px 6px 0 0;
   z-index: 95;
   overflow: hidden;
   transition: bottom 0.2s ease;
 }
+
 #minimap-canvas {
   display: block;
   width: 140px;

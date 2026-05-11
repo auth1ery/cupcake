@@ -1333,3 +1333,78 @@ input, select, textarea, button, a {
   padding: 11px 36px;
   border-radius: 12px 12px 0 0;
 }
+
+.dd-row {
+  justify-content: flex-start;
+  gap: 7px;
+}
+
+.dd-slot-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dd-rename-btn {
+  background: none;
+  border: 1px solid var(--b2);
+  border-radius: 4px;
+  color: var(--cream3);
+  font-family: "Syne", sans-serif;
+  font-size: 9px;
+  padding: 1px 5px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.1s, color 0.1s;
+  flex-shrink: 0;
+}
+
+.dd-row:hover .dd-rename-btn {
+  opacity: 1;
+}
+
+.dd-rename-btn:hover {
+  color: var(--cream);
+  border-color: var(--accent2);
+}
+
+.rename-popup {
+  position: fixed;
+  background: var(--s1);
+  border: 1px solid var(--b2);
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  gap: 5px;
+  z-index: 9999;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+}
+
+.rename-input {
+  background: var(--s3);
+  border: 1px solid var(--b2);
+  border-radius: 5px;
+  color: var(--cream);
+  font-family: "DM Mono", monospace;
+  font-size: 11px;
+  padding: 3px 7px;
+  outline: none;
+  width: 140px;
+}
+
+.rename-input:focus {
+  border-color: var(--accent2);
+}
+
+.rename-ok {
+  background: var(--accent);
+  border: none;
+  border-radius: 5px;
+  color: #130f00;
+  font-family: "Syne", sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  cursor: pointer;
+}

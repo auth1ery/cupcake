@@ -7,6 +7,7 @@
   </head>
   <body>
     <div id="cursor">
+      <!-- app.html -->
       <div id="cursor-h"></div>
       <div id="cursor-v"></div>
     </div>
@@ -26,7 +27,9 @@
       <button class="btn" id="clear-btn">clear</button>
       <button class="btn" id="import-btn">import js</button>
       <div class="sep"></div>
-      <button class="btn icon-btn" id="search-btn" title="quick add (⌘B)">⌕</button>
+      <button class="btn icon-btn" id="search-btn" title="quick add (⌘B)">
+        ⌕
+      </button>
       <button class="btn icon-btn" id="zoom-out-btn" title="zoom out">−</button>
       <button class="btn icon-btn" id="zoom-in-btn" title="zoom in">+</button>
       <button class="btn icon-btn" id="home-btn" title="go to origin">⌂</button>
@@ -37,6 +40,7 @@
       </div>
       <div class="sep"></div>
       <button class="btn" id="settings-btn">settings ⚙</button>
+      <button class="btn" id="assets-btn">assets ✦</button>
       <button class="btn" id="embed-btn">embed ↗</button>
       <button class="btn run-btn" id="run-btn">run ▶</button>
       <button class="btn go" id="compile-btn">compile →</button>
@@ -72,7 +76,9 @@
           <div class="codebox" id="codebox"></div>
         </div>
         <div class="mfoot" id="modal-foot">
-          <button class="btn" id="module-btn" style="margin-right:auto">esm: off</button>
+          <button class="btn" id="module-btn" style="margin-right: auto">
+            esm: off
+          </button>
           <button class="btn" id="download-btn">download ↓</button>
           <button class="btn" id="copy-btn">copy</button>
           <button class="btn go" id="done-btn">done</button>
@@ -155,27 +161,32 @@
 
     <div id="find-bar">
       <span class="search-icon">⌖</span>
-      <input id="find-input" placeholder="find node on canvas..." autocomplete="off" spellcheck="false" />
+      <input
+        id="find-input"
+        placeholder="find node on canvas..."
+        autocomplete="off"
+        spellcheck="false"
+      />
       <span class="search-x" id="find-close">esc</span>
       <div id="find-results"></div>
     </div>
 
     <div
-        id="mobile-block"
-        style="
-          display: none;
-          position: fixed;
-          inset: 0;
-          background: #090909;
-          z-index: 99999;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          text-align: center;
-          padding: 32px;
-          gap: 16px;
-        "
-      >
+      id="mobile-block"
+      style="
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: #090909;
+        z-index: 99999;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 32px;
+        gap: 16px;
+      "
+    >
       <div style="font-size: 48px">🧁</div>
       <div
         style="
@@ -210,8 +221,11 @@
       </div>
     </div>
 
-    <div id="minimap"><canvas id="minimap-canvas" width="180" height="120"></canvas></div>
-    
+    <div id="minimap">
+      <canvas id="minimap-canvas" width="180" height="120"></canvas>
+    </div>
+
+    <script src="/js/types.js"></script>
     <script src="/js/app.js"></script>
   </body>
 </html>

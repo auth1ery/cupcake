@@ -1,4 +1,5 @@
 const TYPES_ADDITIONS = {
+  // types_2.js
   html_tag: {
     label: "html tag",
     cat: "html",
